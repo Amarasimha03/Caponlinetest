@@ -359,16 +359,25 @@ export default function ExamPage() {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', color: '#fff', padding: 20 }}>
 
         {/* Camera Preview */}
-        {webcamReady ? (
-          <div style={{ position: 'relative', width: 320, height: 200, borderRadius: 16, overflow: 'hidden', background: '#000', border: '2.5px solid var(--primary)', marginBottom: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
-            <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+        <div style={{ position: 'relative', width: 320, height: 200, borderRadius: 16, overflow: 'hidden', background: '#000', border: '2.5px solid var(--primary)', marginBottom: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            muted 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: webcamReady ? 'block' : 'none' }} 
+          />
+          {!webcamReady && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+              <div className="spinner"></div>
+            </div>
+          )}
+          {webcamReady && (
             <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.65)', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(4px)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} /> Camera Active
             </div>
-          </div>
-        ) : (
-          <div className="spinner" style={{ marginBottom: 20 }}></div>
-        )}
+          )}
+        </div>
 
         <h2>Initializing Exam...</h2>
         <p style={{ color: 'var(--primary)', fontWeight: 600, fontSize: 16, marginTop: 10, letterSpacing: '0.02em', textAlign: 'center' }}>{initStatus}</p>
