@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, FileText, AlertTriangle, BarChart3,
-  Monitor, LogOut, Menu, X, ChevronRight
+  Monitor, LogOut, Menu, X, Shield, ChevronRight
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useMonitoringStore from '../store/monitoringStore';
@@ -50,7 +50,7 @@ export default function AdminLayout() {
     // Poll every 30s — enough to stay fresh without hammering the server
     const interval = setInterval(stableFetch, 30000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [init, stableFetch]);
 
   const handleLogout = () => {
@@ -68,6 +68,13 @@ export default function AdminLayout() {
         display: 'flex', alignItems: 'center', gap: 12,
         justifyContent: collapsed ? 'center' : 'flex-start',
       }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: 'var(--gradient-primary)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Shield size={22} color="#fff" />
+        </div>
         {!collapsed && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>AssessHub</div>
