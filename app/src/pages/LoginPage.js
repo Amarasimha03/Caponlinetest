@@ -167,9 +167,8 @@ export default function LoginPage() {
           flexDirection: 'column',
           justifyContent: 'center',
         }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 }}>
-            <img src="/logo.svg" alt="Cabptoid SOLUTIONS Logo" style={{ height: 76, objectFit: 'contain' }} />
+          {/* Logo removed */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 30 }}>
             {isWakingUp && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
