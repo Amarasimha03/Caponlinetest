@@ -5,18 +5,7 @@
   "dependencies": {
     "@tensorflow-models/blazeface": "^0.1.0",
     "@tensorflow/tfjs": "^4.22.0",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^13.5.0",
     "axios": "^1.16.1",
-    "compression": "^1.8.1",
-    "cors": "^2.8.6",
-    "date-fns": "^4.2.1",
-    "dotenv": "^17.4.2",
-    "env-cmd": "^11.0.0",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.5.2",
     "framer-motion": "^12.39.0",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^1.16.0",
@@ -26,7 +15,6 @@
     "react-router-dom": "^7.15.1",
     "react-scripts": "5.0.1",
     "recharts": "^3.8.1",
-    "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "web-vitals": "^2.1.4",
     "zustand": "^5.0.13"
@@ -65,9 +53,6 @@
       "last 1 safari version"
     ]
   },
-  "devDependencies": {
-    "cross-env": "^10.1.0"
-  },
   "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
   "main": "index.js",
   "repository": {
@@ -79,5 +64,8 @@
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Amarasimha03/Caponlinetest/issues"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }

@@ -197,63 +197,63 @@ const useMonitoringStore = create((set, get) => ({
       peerConnections[employeeId] = pc;
 
       pc.ontrack = (event) => {
-        console.log(`[MonitoringStore] Received track from ${employeeId}`, event.track.kind, event.track.label, 'muted:', event.track.muted);
-
         const track = event.track;
-        if (track.kind !== 'video') return; // Only map video tracks
+        if (track.kind !== 'video') return;
 
-        // ✅ Stream-identity-based assignment (fixes black screen)
-        // We use a registry of seen stream IDs to determine camera vs. screen.
-        const stream = event.streams[0] || new MediaStream();
-        if (stream.getVideoTracks().length === 0 || !stream.getVideoTracks().includes(track)) {
-          stream.addTrack(track);
-        }
-        const registry = peerStreamRegistry[employeeId];
+        console.log(`[MonitoringStore] ontrack from ${employeeId}:`, track.kind, track.label, 'muted:', track.muted);
+
         const streamIds = peerStreamIdMap[employeeId] || {};
+        const registry = peerStreamRegistry[employeeId];
 
-        if (!registry.has(stream.id)) {
-          registry.add(stream.id);
+        // Use track.id as identity key (unique per track, unlike stream.id which can alias)
+        if (registry.has(track.id)) return;
+        registry.add(track.id);
 
-          let isCamera = false;
-          if (streamIds.cameraStreamId && stream.id === streamIds.cameraStreamId) {
-            isCamera = true;
-          } else if (streamIds.screenStreamId && stream.id === streamIds.screenStreamId) {
-            isCamera = false;
-          } else {
-            isCamera = registry.size === 1;
-          }
+        // Build a clean MediaStream containing only this track
+        const ownStream = new MediaStream([track]);
 
-          const applyStream = (forceNew = false) => {
-            set((state) => {
-              const updated = state.activeExams.map((e) => {
-                if (e.employeeId !== employeeId) return e;
-                
-                // If forced (e.g. on unmute), wrap the track in a new MediaStream
-                // so React detects a referential change and re-renders the component
-                const freshStream = forceNew ? new MediaStream([track]) : stream;
-                
-                if (isCamera) {
-                  console.log(`[MonitoringStore] Setting CAMERA stream for ${employeeId} (stream: ${freshStream.id})`);
-                  return { ...e, cameraStream: freshStream, webrtcConnected: true };
-                } else {
-                  console.log(`[MonitoringStore] Setting SCREEN stream for ${employeeId} (stream: ${freshStream.id})`);
-                  return { ...e, screenStream: freshStream, webrtcConnected: true };
-                }
-              });
-              return { activeExams: updated };
-            });
-          };
+        // Determine camera vs screen by matching the stream ID sent in the offer payload
+        // event.streams[0].id is the stream the employee originally added this track to
+        const originStreamId = event.streams?.[0]?.id ?? null;
+        let isCamera;
+        if (streamIds.cameraStreamId && originStreamId === streamIds.cameraStreamId) {
+          isCamera = true;
+        } else if (streamIds.screenStreamId && originStreamId === streamIds.screenStreamId) {
+          isCamera = false;
+        } else {
+          // Fallback: first unseen track = camera, second = screen
+          isCamera = registry.size === 1;
+        }
 
-          // Apply stream immediately on track arrival
-          applyStream(false);
+        console.log(`[MonitoringStore] Assigning ${isCamera ? 'CAMERA' : 'SCREEN'} track for ${employeeId} (originStream: ${originStreamId})`);
 
-          // ✅ Re-trigger on 'unmute': remote tracks begin in muted state until first RTP packet arrives.
-          // This fires a state re-render at the exact moment video data starts flowing,
-          // fixing black screens even when the connection reports P2P Connected.
-          track.addEventListener('unmute', () => {
-            console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} — forcing stream refresh to break React memo`);
-            applyStream(true);
-          });
+        const applyStream = (stream) => {
+          set((state) => ({
+            activeExams: state.activeExams.map((e) => {
+              if (e.employeeId !== employeeId) return e;
+              if (isCamera) {
+                return { ...e, cameraStream: stream, webrtcConnected: true };
+              } else {
+                return { ...e, screenStream: stream, webrtcConnected: true };
+              }
+            }),
+          }));
+        };
+
+        // Apply immediately — track may already be live
+        applyStream(ownStream);
+
+        // Re-apply on unmute: remote tracks start muted until first RTP packet.
+        // Wrapping in a NEW MediaStream forces React's memo to detect a reference change
+        // and re-attach srcObject, breaking the black screen on delayed media arrival.
+        track.addEventListener('unmute', () => {
+          console.log(`[MonitoringStore] Track UNMUTED for ${employeeId} (${isCamera ? 'camera' : 'screen'}) — forcing re-render`);
+          applyStream(new MediaStream([track]));
+        });
+
+        // Also handle the case where the track was already live when ontrack fired
+        if (!track.muted) {
+          applyStream(new MediaStream([track]));
         }
       };
 
