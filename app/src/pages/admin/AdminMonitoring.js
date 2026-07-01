@@ -51,14 +51,17 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
     let detachCamera = () => { };
     let detachScreen = () => { };
 
-    if (candidate.cameraStream) {
-      detachCamera = attachStream(cameraRef, candidate.cameraStream);
-    }
-    if (candidate.screenStream) {
-      detachScreen = attachStream(screenRef, candidate.screenStream);
-    }
+    const timer = setTimeout(() => {
+      if (candidate.cameraStream) {
+        detachCamera = attachStream(cameraRef, candidate.cameraStream);
+      }
+      if (candidate.screenStream) {
+        detachScreen = attachStream(screenRef, candidate.screenStream);
+      }
+    }, 50);
 
     return () => {
+      clearTimeout(timer);
       detachCamera();
       detachScreen();
     };

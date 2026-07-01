@@ -17,6 +17,9 @@ const peerStreamIdMap = {};
 let consecutiveFailures = 0;
 const MAX_FAILURES = 3;
 
+// Track completed exams in this session to prevent race conditions where fetchMonitoringData resurrects them
+const completedExams = new Set();
+
 const useMonitoringStore = create((set, get) => ({
   activeExams: [],
   violations: [],
@@ -43,17 +46,20 @@ const useMonitoringStore = create((set, get) => ({
       consecutiveFailures = 0; // reset on success
 
       set((state) => {
-        const updatedExams = fetched.map((item) => {
-          const existing = state.activeExams.find((p) => p.employeeId === item.employeeId);
-          return {
-            ...item,
-            cameraActive: item.cameraActive || (existing?.cameraActive ?? false),
-            webrtcConnected: existing?.webrtcConnected ?? (peerConnections[item.employeeId]?.connectionState === 'connected'),
-            cameraStream: existing?.cameraStream ?? null,
-            screenStream: existing?.screenStream ?? null,
-            lastViolation: existing?.lastViolation ?? null,
-          };
-        });
+        const updatedExams = fetched
+          .filter(item => !completedExams.has(String(item.employeeId)))
+          .map((item) => {
+            const existing = state.activeExams.find((p) => String(p.employeeId) === String(item.employeeId));
+            return {
+              ...item,
+              employeeId: String(item.employeeId),
+              cameraActive: item.cameraActive || (existing?.cameraActive ?? false),
+              webrtcConnected: existing?.webrtcConnected ?? (peerConnections[item.employeeId]?.connectionState === 'connected'),
+              cameraStream: existing?.cameraStream ?? null,
+              screenStream: existing?.screenStream ?? null,
+              lastViolation: existing?.lastViolation ?? null,
+            };
+          });
         return { activeExams: updatedExams };
       });
 
@@ -228,16 +234,36 @@ const useMonitoringStore = create((set, get) => ({
         console.log(`[MonitoringStore] Assigning ${isCamera ? 'CAMERA' : 'SCREEN'} track for ${employeeId} (originStream: ${originStreamId})`);
 
         const applyStream = (stream) => {
-          set((state) => ({
-            activeExams: state.activeExams.map((e) => {
-              if (e.employeeId !== employeeId) return e;
-              if (isCamera) {
-                return { ...e, cameraStream: stream, webrtcConnected: true };
-              } else {
-                return { ...e, screenStream: stream, webrtcConnected: true };
-              }
-            }),
-          }));
+          set((state) => {
+            const exists = state.activeExams.some((e) => String(e.employeeId) === String(employeeId));
+
+            if (!exists) {
+              return {
+                activeExams: [
+                  ...state.activeExams,
+                  {
+                    employeeId: String(employeeId),
+                    employeeName: 'Connecting...',
+                    cameraActive: true,
+                    webrtcConnected: true,
+                    cameraStream: isCamera ? stream : null,
+                    screenStream: isCamera ? null : stream,
+                  }
+                ]
+              };
+            }
+
+            return {
+              activeExams: state.activeExams.map((e) => {
+                if (String(e.employeeId) !== String(employeeId)) return e;
+                if (isCamera) {
+                  return { ...e, cameraStream: stream, webrtcConnected: true };
+                } else {
+                  return { ...e, screenStream: stream, webrtcConnected: true };
+                }
+              }),
+            };
+          });
         };
 
         // Apply immediately — track may already be live
@@ -321,6 +347,9 @@ const useMonitoringStore = create((set, get) => ({
       }
       delete peerStreamRegistry[data.employeeId];
       delete peerStreamIdMap[data.employeeId];
+      
+      // Mark as completed to prevent fetchMonitoringData from resurrecting them
+      completedExams.add(String(data.employeeId));
       
       set((state) => {
         const emp = state.activeExams.find(e => String(e.employeeId) === String(data.employeeId));
