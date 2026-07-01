@@ -167,30 +167,34 @@ export default function LoginPage() {
           flexDirection: 'column',
           justifyContent: 'center',
         }}>
-          {/* Logo removed */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 30 }}>
-            {isWakingUp && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: 'rgba(59,158,255,0.08)',
-                  border: '1.5px solid rgba(59,158,255,0.2)',
-                  borderRadius: 20,
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#3b9eff'
-                }}
-              >
+          {isWakingUp && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                marginBottom: 16,
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'rgba(59,158,255,0.08)',
+                border: '1.5px solid rgba(59,158,255,0.2)',
+                borderRadius: 20,
+                padding: '6px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#3b9eff'
+              }}>
                 <Loader2 size={12} className="animate-spin" />
                 <span>Connecting server...</span>
-              </motion.div>
-            )}
-          </div>
+              </div>
+            </motion.div>
+          )}
 
           <form onSubmit={handleSubmit} autoComplete="off">
             {/* Username */}

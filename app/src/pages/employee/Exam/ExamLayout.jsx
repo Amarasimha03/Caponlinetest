@@ -257,36 +257,34 @@ export function ExamLayout({
                     </button>
                   )}
 
-                  {/* Submit Exam button — always visible, prominent on last question */}
-                  <button
-                    className="btn"
-                    onClick={() => setShowSubmitConfirm(true)}
-                    disabled={submitting || answeredCount === 0}
-                    style={{
-                      background: isLastQuestion
-                        ? 'linear-gradient(135deg, #10b981, #059669)'
-                        : 'rgba(16,185,129,0.1)',
-                      color: isLastQuestion ? '#fff' : '#10b981',
-                      border: isLastQuestion ? 'none' : '1.5px solid rgba(16,185,129,0.3)',
-                      borderRadius: 10, padding: '10px 22px',
-                      fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: 13,
-                      boxShadow: isLastQuestion ? '0 4px 15px rgba(16,185,129,0.3)' : 'none',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-                      e.currentTarget.style.color = '#fff';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(16,185,129,0.4)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = isLastQuestion ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(16,185,129,0.1)';
-                      e.currentTarget.style.color = isLastQuestion ? '#fff' : '#10b981';
-                      e.currentTarget.style.boxShadow = isLastQuestion ? '0 4px 15px rgba(16,185,129,0.3)' : 'none';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <Send size={14} /> Submit Exam
-                  </button>
+                  {/* Submit Exam button — ONLY on the last question */}
+                  {isLastQuestion && (
+                    <button
+                      className="btn"
+                      onClick={() => setShowSubmitConfirm(true)}
+                      disabled={submitting || answeredCount === 0}
+                      style={{
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 10, padding: '10px 22px',
+                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: 13,
+                        boxShadow: '0 4px 15px rgba(16,185,129,0.3)',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #059669, #047857)';
+                        e.currentTarget.style.boxShadow = '0 4px 20px rgba(16,185,129,0.5)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(16,185,129,0.3)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <Send size={14} /> Submit Exam
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
