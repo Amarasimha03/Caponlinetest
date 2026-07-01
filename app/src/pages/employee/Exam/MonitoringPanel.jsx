@@ -20,6 +20,22 @@ export function MonitoringPanel({ videoRef, streamRef }) {
     }
   }, [videoRef, streamRef]);
 
+  // Continuously ensure the stream remains attached and playing (fixes backgrounding/black frame drops)
+  useEffect(() => {
+    const enforcePlayback = setInterval(() => {
+      if (videoRef?.current && streamRef?.current) {
+        const video = videoRef.current;
+        if (video.srcObject !== streamRef.current) {
+          video.srcObject = streamRef.current;
+        }
+        if (video.paused) {
+          video.play().catch(e => console.warn("Monitoring Video Play Recovery Error:", e));
+        }
+      }
+    }, 1000);
+    return () => clearInterval(enforcePlayback);
+  }, [videoRef, streamRef]);
+
   // Base64 Live Frame Emitter
   useEffect(() => {
     const interval = setInterval(() => {

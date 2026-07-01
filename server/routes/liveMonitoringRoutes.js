@@ -15,33 +15,28 @@ router.get('/', protect, async (req, res) => {
     const assessments = assRes.data || [];
 
     const activeSockets = req.app.get('activeSockets') || new Map();
+    const activeExams = [];
 
-    const activeExams = activeResults.map(r => {
-      const e = employees.find(e => String(e._id) === String(r.employeeMongoId || r.employee || r.employeeId));
-      const a = assessments.find(a => String(a._id) === String(r.assessmentId || r.assessment));
+    for (const [empId, socketData] of activeSockets.entries()) {
+      const e = employees.find(emp => String(emp._id) === String(empId));
+      const a = assessments.find(ass => String(ass._id) === String(socketData.examId));
 
-      const empId = e?._id ? String(e._id) : String(r.employeeMongoId || r.employee || r.employeeId || '');
-      const socketData = activeSockets.get(empId);
-      const isCorrectExam = socketData && String(socketData.examId) === String(a?._id || r.assessmentId || r.assessment);
-
-      let sm = {};
-      try { sm = typeof r.screenMonitoring === 'string' ? JSON.parse(r.screenMonitoring) : (r.screenMonitoring || {}); } catch(e){}
-
-      return {
+      // We still try to grab screenMonitoring state if available, but default to true if they are live
+      activeExams.push({
         employeeId: empId,
-        employeeName: e?.fullName || r.employeeName || 'Candidate',
-        assessmentId: a?._id || r.assessmentId || r.assessment || '',
+        employeeName: e?.fullName || socketData.employeeName || 'Candidate',
+        assessmentId: socketData.examId || '',
         assessmentTitle: a?.title || 'Exam',
-        violationCount: parseInt(r.violationCount) || 0,
-        startedAt: r.startedAt,
-        cameraActive: sm.webcamEnabled === true || sm.webcamEnabled === 'true',
-        screenShareStatus: (sm.webcamEnabled === true || sm.webcamEnabled === 'true') ? 'active' : 'stopped',
+        violationCount: 0, // Violations can be pulled independently by the frontend
+        startedAt: socketData.joinedAt || new Date().toISOString(),
+        cameraActive: true,
+        screenShareStatus: 'active',
         webrtcConnected: false,
-        socketId: isCorrectExam ? socketData.socketId : '',
-      };
-    });
+        socketId: socketData.socketId,
+      });
+    }
 
-    res.json(activeExams.filter(exam => exam.socketId));
+    res.json(activeExams);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

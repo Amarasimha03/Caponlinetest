@@ -32,8 +32,15 @@ export function useFaceDetection({ phase, videoRef, webcamReady, logViolation })
 
     simulationIntervalRef.current = setInterval(async () => {
       if (faceModelRef.current && videoRef.current && webcamReady) {
+        const video = videoRef.current;
+        if (video.readyState < 2 || video.paused) {
+          // Video isn't actually delivering frames right now — skip this cycle,
+          // don't count it as a missing-face violation
+          return;
+        }
+
         try {
-          const predictions = await faceModelRef.current.estimateFaces(videoRef.current, false);
+          const predictions = await faceModelRef.current.estimateFaces(video, false);
 
           const validPersons = predictions.filter(p => {
             const score = Array.isArray(p.probability) ? p.probability[0] : (p.probability || p.score || 1);

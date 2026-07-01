@@ -84,12 +84,19 @@ exports.querySheets = async (action, payload = {}) => {
 
   // 4. Update Cache or Invalidate
   if (isCacheableAction(action)) {
-    // Save to cache
-    cache.set(cacheKey, { timestamp: Date.now(), data: JSON.stringify(parsed) });
+    // Save to cache (only if we are safely past any recent mutation window to avoid caching stale data)
+    const now = Date.now();
+    const timeSinceLastMutation = now - (cache.lastMutationTime || 0);
+    if (timeSinceLastMutation > 3000) {
+      cache.set(cacheKey, { timestamp: now, data: JSON.stringify(parsed) });
+    } else {
+      console.log(`[querySheets] 🟡 Skipping cache write for ${action} due to recent mutation`);
+    }
   } else {
     // It's a mutation (create, update, delete). Clear entire cache to guarantee freshness!
     console.log(`[querySheets] 🟡 Mutation detected (${action}). Clearing memory cache.`);
     cache.clear();
+    cache.lastMutationTime = Date.now(); // Record mutation time
     try {
       const { clearCache } = require('../middleware/cache');
       clearCache();

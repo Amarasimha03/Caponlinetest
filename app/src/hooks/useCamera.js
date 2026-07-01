@@ -48,19 +48,6 @@ export function useCamera(user) {
 
       streamRef.current = stream;
 
-      const bindStream = () => {
-        if (videoRef.current) {
-          if (videoRef.current.srcObject !== stream) {
-            videoRef.current.srcObject = stream;
-          }
-          videoRef.current.play().catch(e => {
-            if (e.name !== 'AbortError') console.warn('Video play() failed:', e);
-          });
-        }
-      };
-      bindStream();
-      setTimeout(bindStream, 300);
-
       if (!stream.active) {
         setCameraError('Camera is not active. It may be blocked by another application (Zoom, Meet, Teams). Close them and retry.');
         setCameraLoading(false);
@@ -68,6 +55,47 @@ export function useCamera(user) {
         return;
       }
 
+      // Reliably wait for the <video> element to exist AND actually start rendering frames
+      await new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 30; // 3 seconds timeout
+
+        const tryBind = () => {
+          attempts++;
+          if (videoRef.current) {
+            const video = videoRef.current;
+            video.muted = true;       // guarantees autoplay isn't blocked, cross-browser
+            video.playsInline = true; // required on iOS Safari
+
+            if (video.srcObject !== stream) {
+              video.srcObject = stream;
+            }
+
+            const onPlaying = () => {
+              video.removeEventListener('playing', onPlaying);
+              resolve();
+            };
+            video.addEventListener('playing', onPlaying);
+
+            video.play().catch(e => {
+              if (e.name !== 'AbortError') console.warn('Video play() failed:', e);
+            });
+
+            // Fallback: some browsers fire 'playing' inconsistently — also check readyState directly
+            if (video.readyState >= 2) {
+              video.removeEventListener('playing', onPlaying);
+              resolve();
+            }
+          } else if (attempts >= maxAttempts) {
+            reject(new Error('Video element never mounted — cannot bind camera stream.'));
+          } else {
+            setTimeout(tryBind, 100);
+          }
+        };
+        tryBind();
+      });
+
+      // Only NOW do we know frames are actually flowing
       setWebcamReady(true);
       setCameraError('');
       if (user?._id) api.post('/state/monitor/save', { userId: user._id, cameraStatus: 'active' }).catch(() => {});

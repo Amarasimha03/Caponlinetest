@@ -80,12 +80,16 @@ export default function ExamPage() {
     };
 
     socketRef.current?.on('connect', handleConnect);
+    // Explicitly listen to socket.io's reconnect event just in case
+    socketRef.current?.io?.on('reconnect', handleConnect);
+    
     socketRef.current?.on('webrtc:answer', (data) => webrtcManagerRef.current?.handleAnswer(data));
     socketRef.current?.on('webrtc:ice-candidate', (data) => webrtcManagerRef.current?.handleIceCandidate(data));
     socketRef.current?.on('webrtc:request-renegotiate', handleRenegotiate);
 
     return () => {
       socketRef.current?.off('connect', handleConnect);
+      socketRef.current?.io?.off('reconnect', handleConnect);
       socketRef.current?.off('webrtc:answer');
       socketRef.current?.off('webrtc:ice-candidate');
       socketRef.current?.off('webrtc:request-renegotiate', handleRenegotiate);

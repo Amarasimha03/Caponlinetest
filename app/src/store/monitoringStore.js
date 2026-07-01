@@ -205,8 +205,26 @@ const useMonitoringStore = create((set, get) => ({
       pc.ontrack = (event) => {
         const track = event.track;
         if (track.kind !== 'video') return;
-
+        
         console.log(`[MonitoringStore] ontrack from ${employeeId}:`, track.kind, track.label, 'muted:', track.muted);
+
+        // --- DIAGNOSTICS START: Monitor if TURN server is dropping RTP packets ---
+        const intervalId = setInterval(async () => {
+          if (pc.connectionState === 'closed') {
+            clearInterval(intervalId);
+            return;
+          }
+          const stats = await pc.getStats();
+          stats.forEach(r => {
+            if (r.type === 'inbound-rtp' && r.kind === 'video' && r.trackId) {
+              const inboundTrack = pc.getReceivers().find(rec => rec.track.id === r.trackId)?.track;
+              if (inboundTrack && inboundTrack.id === track.id) {
+                console.log(`[Diagnostics - ${employeeId}] ${track.label} | bytesReceived: ${r.bytesReceived} | packetsLost: ${r.packetsLost} | muted: ${track.muted}`);
+              }
+            }
+          });
+        }, 2000);
+        // --- DIAGNOSTICS END ---
 
         const streamIds = peerStreamIdMap[employeeId] || {};
         const registry = peerStreamRegistry[employeeId];
