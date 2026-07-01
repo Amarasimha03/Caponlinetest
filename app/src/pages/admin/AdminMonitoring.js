@@ -38,6 +38,20 @@ function attachStream(ref, stream) {
   };
 }
 
+// A dedicated video component that safely attaches streams exactly when mounted
+const LiveVideo = memo(({ stream, style }) => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (stream) {
+      const detach = attachStream(videoRef, stream);
+      return () => detach();
+    }
+  }, [stream]);
+
+  return <video ref={videoRef} autoPlay playsInline muted style={style} />;
+});
+
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
 const CandidateCard = memo(({ candidate, onMaximize }) => {
   const cameraRef = useRef(null);
@@ -83,7 +97,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
           {/* Camera Video */}
           {hasCamera && (
             <div style={{ flex: 1, borderRight: hasScreen ? '1px solid #333' : 'none', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <video ref={cameraRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+              <LiveVideo stream={candidate.cameraStream} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
               <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Camera size={10} /> CAMERA
               </div>
@@ -93,7 +107,7 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
           {/* Screen Video */}
           {hasScreen && (
             <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <video ref={screenRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <LiveVideo stream={candidate.screenStream} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               <div style={{ position: 'absolute', bottom: 4, left: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Monitor size={10} /> SCREEN
               </div>
@@ -185,34 +199,15 @@ export default function AdminMonitoring() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update selected candidate streams in the modal when it opens
+  // Modal stream attachment is now handled safely inside LiveVideo components
+  // No need for unreliable timeouts or global refs here!
   useEffect(() => {
     const currentCandidate = selectedCandidate ? activeExams.find(e => e.employeeId === selectedCandidate.employeeId) : null;
 
     if (selectedCandidate && !currentCandidate) {
       // Candidate submitted exam or disconnected — auto-close the modal
       setSelectedCandidate(null);
-      return;
     }
-
-    let detachCamera = () => { };
-    let detachScreen = () => { };
-
-    // Refs may not be attached yet on first render due to AnimatePresence — defer
-    const timer = setTimeout(() => {
-      if (currentCandidate?.cameraStream) {
-        detachCamera = attachStream(selectedCameraRef, currentCandidate.cameraStream);
-      }
-      if (currentCandidate?.screenStream) {
-        detachScreen = attachStream(selectedScreenRef, currentCandidate.screenStream);
-      }
-    }, 50);
-
-    return () => {
-      clearTimeout(timer);
-      detachCamera();
-      detachScreen();
-    };
   }, [selectedCandidate, activeExams]);
 
   const violationFeed = useMemo(() => {
@@ -382,14 +377,14 @@ export default function AdminMonitoring() {
                 <div style={{ display: 'flex', gap: 20, height: 380 }}>
                   {/* Camera */}
                   <div style={{ flex: 1, borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid var(--border)', position: 'relative' }}>
-                    <video ref={selectedCameraRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                    <LiveVideo stream={activeExams.find(e => e.employeeId === selectedCandidate.employeeId)?.cameraStream} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                     <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 6, fontSize: 12, color: '#fff' }}>
                       <Camera size={14} style={{ display: 'inline', marginRight: 6 }} /> Live Camera
                     </div>
                   </div>
                   {/* Screen */}
                   <div style={{ flex: 1, borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid var(--border)', position: 'relative' }}>
-                    <video ref={selectedScreenRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <LiveVideo stream={activeExams.find(e => e.employeeId === selectedCandidate.employeeId)?.screenStream} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 6, fontSize: 12, color: '#fff' }}>
                       <Monitor size={14} style={{ display: 'inline', marginRight: 6 }} /> Screen Share
                     </div>
