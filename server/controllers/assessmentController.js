@@ -191,6 +191,15 @@ exports.createAssessment = async (req, res) => {
 
     if (!assessmentData._id || String(assessmentData._id).trim() === '') {
       assessmentData._id = Date.now().toString();
+    } else {
+      const trimmedId = String(assessmentData._id).trim();
+      // If the ID is purely numeric and starts with 0 (e.g. "01"), Google Sheets will silently cast it to a Number and strip the zero ("1").
+      // We proactively strip the zeros here so Node's returned response exactly matches what Sheets will store, preventing 404s.
+      if (/^0\d+$/.test(trimmedId)) {
+        assessmentData._id = trimmedId.replace(/^0+(?=\d)/, '');
+      } else {
+        assessmentData._id = trimmedId;
+      }
     }
 
     // Auto-assign to all active employees
