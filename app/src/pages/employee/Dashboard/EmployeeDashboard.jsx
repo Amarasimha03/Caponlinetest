@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, LayoutDashboard, Search, Bell, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { LogOut, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import api from '../../../services/api';
@@ -20,9 +20,7 @@ export default function EmployeeDashboard() {
 
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState([]);
-  const [showNotif, setShowNotif] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  // Unused notifications state removed
   const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async (isBackground = false) => {
@@ -43,22 +41,6 @@ export default function EmployeeDashboard() {
       const sorted = list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
       setAssessments(sorted);
-
-      const notifs = [];
-      sorted.forEach(a => {
-        if (!a.result && a.createdAt) {
-          const dateObj = new Date(a.createdAt);
-          const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          notifs.push({
-            id: a._id,
-            message: `New assessment assigned: ${a.title}`,
-            time: timeStr,
-            unread: true
-          });
-        }
-      });
-      setNotifications(notifs);
-      setHasUnread(notifs.length > 0 ? true : false);
 
     } catch (err) {
       if (err.name !== 'CanceledError' && err.message !== 'canceled') {
@@ -132,9 +114,6 @@ export default function EmployeeDashboard() {
         position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LayoutDashboard size={20} color="#fff" />
-          </div>
           <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Employee<span style={{ color: 'var(--primary)' }}>Portal</span>
           </span>

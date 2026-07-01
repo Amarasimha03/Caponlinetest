@@ -23,7 +23,7 @@ export default function AdminDashboard() {
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
-  const [loading, setLoading] = useState(() => {
+  const [, setLoading] = useState(() => {
     return !localStorage.getItem('admin_dashboard_stats');
   });
 
