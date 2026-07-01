@@ -61,7 +61,7 @@ function App() {
     const wakeUpBackend = async () => {
       try {
         const fallbackUrl = "https://caponlinebackend.onrender.com/api/health";
-        const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/health` : fallbackUrl;
+        const targetUrl = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL.replace(/\/$/, '')}/api/health` : fallbackUrl;
         
         const start = Date.now();
         const maxWaitMs = 60000;
