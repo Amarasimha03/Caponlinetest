@@ -1,5 +1,5 @@
 // ── Load .env first (override:true ensures .env wins over Render dashboard defaults) ─
-require('dotenv').config({ path: require('path').join(__dirname, '.env'), override: true });
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 // ── Hardcoded fallbacks — only used if NOT set in .env OR Render dashboard ─────────
 process.on("uncaughtException", (err) => {

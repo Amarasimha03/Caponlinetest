@@ -87,7 +87,8 @@ exports.login = async (req, res) => {
     }
 
     if (!employee) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      console.warn(`[Login] Employee not found for email: ${email}`);
+      return res.status(401).json({ success: false, message: 'Invalid email or password (User not found)' });
     }
 
     let isValid = false;
@@ -108,7 +109,8 @@ exports.login = async (req, res) => {
         querySheets('updateEmployee', { _id: employee._id, loginHistory: history })
           .catch(err => console.error('[Login] Failed to sync failed history:', err.message));
       }
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      console.warn(`[Login] Invalid password for email: ${email}`);
+      return res.status(401).json({ success: false, message: 'Invalid email or password (Password incorrect)' });
     }
 
     if (!employee.isActive && employee.isActive !== 'true') {
