@@ -269,8 +269,9 @@ export default function AdminQuestions() {
     try {
       await api.delete(`/questions/${targetId}`);
       toast.success('Question permanently deleted');
+      // Update state immediately without refresh
+      setQuestions(prev => prev.filter(q => q._id !== targetId));
       localStorage.removeItem('admin_assessments_list');
-      await load();
     } catch {
       toast.error('Failed to delete question');
     } finally {
@@ -285,11 +286,15 @@ export default function AdminQuestions() {
       const res = await api.delete(`/assessments/${assessmentId}/imported-questions`);
       if (res.data.success) {
         setDeleteImportedMessage(`✓ ${res.data.message}`);
+        
+        // Update state immediately
+        setQuestions(prev => prev.filter(q => q.source !== 'DOCUMENT_IMPORT'));
+        toast.success(`✓ ${res.data.deletedQuestions || 30} imported questions deleted successfully.`);
+        
         setTimeout(() => {
           setShowDeleteImportedModal(false);
           setIsDeletingImported(false);
-          load();
-        }, 2000);
+        }, 1500);
       }
     } catch (err) {
       console.error(err);
