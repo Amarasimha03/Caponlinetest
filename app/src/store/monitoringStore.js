@@ -423,6 +423,27 @@ const useMonitoringStore = create((set, get) => ({
       set({ connected: false });
     });
 
+    socket.on('admin:live-metrics', (metrics) => {
+      set((state) => {
+        const updatedExams = state.activeExams.map((e) => {
+          const metric = metrics.find(m => String(m.userId) === String(e.employeeId));
+          if (metric) {
+            return {
+              ...e,
+              focusLossCount: metric.focusLossCount,
+              multiplePersonCount: metric.multiplePersonCount,
+              tabSwitchCount: metric.tabSwitchCount,
+              faceMissingCount: metric.faceMissingCount,
+              status: metric.status,
+              isOnline: metric.isOnline
+            };
+          }
+          return e;
+        });
+        return { activeExams: updatedExams };
+      });
+    });
+
     if (socket.connected) {
       set({ connected: true });
       socket.emit('admin:join');
@@ -431,7 +452,7 @@ const useMonitoringStore = create((set, get) => ({
     set({ initialized: true });
   },
 
-  // ✅ Fix 1 — Terminate an employee's exam from the admin side
+  // ✅ Terminate an employee's exam from the admin side
   terminateExam: (employeeId, employeeSocketId) => {
     console.log(`[MonitoringStore] Terminating exam for ${employeeId}`);
 
@@ -450,6 +471,12 @@ const useMonitoringStore = create((set, get) => ({
     set((state) => ({
       activeExams: state.activeExams.filter((e) => e.employeeId !== employeeId),
     }));
+  },
+
+  // ✅ Send control commands (Force Refresh, Reconnect, etc)
+  sendAdminCommand: (employeeId, action) => {
+    console.log(`[MonitoringStore] Sending ${action} command to ${employeeId}`);
+    socket.emit('admin:control-action', { employeeId, action });
   },
 
   // ✅ Rejoin admin room — tries restoreStreams first, falls back to renegotiation

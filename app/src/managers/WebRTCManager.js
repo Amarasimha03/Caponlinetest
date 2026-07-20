@@ -61,6 +61,19 @@ export class WebRTCManager {
       }
     };
 
+    // Auto-reconnection logic
+    this.pc.oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] ICE Connection State: ${this.pc.iceConnectionState}`);
+      if (this.pc.iceConnectionState === 'disconnected' || this.pc.iceConnectionState === 'failed') {
+        console.warn('[WebRTC] Connection lost. Attempting auto-reconnect in 3s...');
+        setTimeout(() => {
+          if (this.socket && this.user) {
+            this.setupWebRTC(cameraStream, screenStream);
+          }
+        }, 3000);
+      }
+    };
+
     try {
       const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);

@@ -147,27 +147,20 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>ID: {candidate.employeeId?.slice(-6)}</div>
           </div>
         </div>
-        {!hasAnyStream && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-            <span className={`badge ${candidate.webrtcConnected ? 'badge-success' : 'badge-danger animate-pulse'}`} style={{ fontSize: 9, padding: '2px 6px' }}>
-              {candidate.webrtcConnected ? 'LIVE P2P' : 'DISCONNECTED'}
-            </span>
-            {candidate.violationCount > 0 && (
-              <span className="badge badge-danger" style={{ fontSize: 9, padding: '2px 6px' }}>
-                {candidate.violationCount} Violations
-              </span>
-            )}
-          </div>
-        )}
-        {candidate.lastViolation && (
-          <div style={{
-            marginTop: 8, padding: '6px 8px', background: 'rgba(239, 68, 68, 0.08)',
-            borderRadius: 6, border: '1px dashed rgba(239,68,68,0.2)', fontSize: 10, color: '#f87171',
-            whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden'
-          }}>
-            <strong>Alert:</strong> {candidate.lastViolation}
-          </div>
-        )}
+
+        {/* Live Metrics Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 8 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Focus Loss: <strong style={{color: candidate.focusLossCount > 0 ? '#ef4444' : '#10b981'}}>{candidate.focusLossCount || 0}</strong></div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Multi-Person: <strong style={{color: candidate.multiplePersonCount > 0 ? '#ef4444' : '#10b981'}}>{candidate.multiplePersonCount || 0}</strong></div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Tab Switches: <strong style={{color: candidate.tabSwitchCount > 0 ? '#ef4444' : '#10b981'}}>{candidate.tabSwitchCount || 0}</strong></div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Face Missing: <strong style={{color: candidate.faceMissingCount > 0 ? '#ef4444' : '#10b981'}}>{candidate.faceMissingCount || 0}</strong></div>
+        </div>
+        
+        <div style={{ marginTop: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 'bold', color: candidate.status?.includes('Safe') ? '#10b981' : candidate.status?.includes('Warning') ? '#f59e0b' : '#ef4444' }}>
+            STATUS: {candidate.status || '🟢 Safe'}
+          </span>
+        </div>
       </div>
     </motion.div>
   );
@@ -399,21 +392,29 @@ export default function AdminMonitoring() {
                   <div>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CANDIDATE NAME</span>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 4 }}>{selectedCandidate.employeeName}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>ID: {selectedCandidate.employeeId}</div>
                   </div>
                   <div>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CANDIDATE ID</span>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 4 }}>{selectedCandidate.employeeId}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>VIOLATIONS LOGGED</span>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
-                      {selectedCandidate.violationCount || 0} alerts
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CURRENT STATUS</span>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: selectedCandidate.status?.includes('Safe') ? '#10b981' : selectedCandidate.status?.includes('Warning') ? '#f59e0b' : '#ef4444', marginTop: 4 }}>
+                      {selectedCandidate.status || '🟢 Safe'}
                     </div>
                   </div>
                   <div>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>WEBRTC STATE</span>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: selectedCandidate.webrtcConnected ? '#10b981' : '#ef4444', marginTop: 4 }}>
-                      {selectedCandidate.webrtcConnected ? 'P2P Connected' : 'Disconnected'}
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>LIVE COUNTERS</span>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div>Focus Loss: <span style={{color: selectedCandidate.focusLossCount > 0 ? '#ef4444' : '#10b981'}}>{selectedCandidate.focusLossCount || 0}</span></div>
+                      <div>Multi-Person: <span style={{color: selectedCandidate.multiplePersonCount > 0 ? '#ef4444' : '#10b981'}}>{selectedCandidate.multiplePersonCount || 0}</span></div>
+                      <div>Tab Switches: <span style={{color: selectedCandidate.tabSwitchCount > 0 ? '#ef4444' : '#10b981'}}>{selectedCandidate.tabSwitchCount || 0}</span></div>
+                      <div>Face Missing: <span style={{color: selectedCandidate.faceMissingCount > 0 ? '#ef4444' : '#10b981'}}>{selectedCandidate.faceMissingCount || 0}</span></div>
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ADMIN CONTROLS</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                      <button 
+                        onClick={() => useMonitoringStore.getState().sendAdminCommand(selectedCandidate.employeeId, 'force-refresh')}
+                        className="btn btn-sm btn-primary" style={{ padding: '4px 8px', fontSize: 11 }}>Force Refresh</button>
                     </div>
                   </div>
                 </div>

@@ -52,6 +52,8 @@ const examRoutes = require('./routes/examRoutes');
 const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 const configRoutes = require('./routes/config');
 
+const proctorService = require('./services/proctorService');
+
 const app = express();
 const compression = require('compression');
 
@@ -512,6 +514,9 @@ async function startServer() {
       socket.join(examId);
       activeSockets.set(String(userId), { socketId: socket.id, examId, employeeName: employeeName || 'Employee', joinedAt: new Date() });
 
+      // Start tracking in proctor service
+      proctorService.joinExam(String(userId), examId, socket.id, employeeName || 'Employee');
+
       // Notify admin using default fallback and spec room
       io.to('admin-room').emit('exam:employee-joined', {
         employeeId: userId,
@@ -539,9 +544,21 @@ async function startServer() {
 
     // Employee violation specification
     socket.on('violation', (data) => {
-      const { examId } = data;
+      const { examId, userId, type, description, screenshot } = data;
       io.to(examId).emit('violation', data);
-      // Removed duplicate admin broadcast to prevent double logging in dashboard
+      
+      const result = proctorService.processViolation(String(userId), type, description, screenshot);
+      
+      if (result.action === 'warn') {
+        io.to(socket.id).emit('violation-warning', {
+          message: result.message,
+          currentCount: result.currentCount,
+          maxCount: result.maxCount,
+          type
+        });
+      } else if (result.action === 'terminate') {
+        io.to(socket.id).emit('force-terminate', { reason: result.reason });
+      }
     });
 
     socket.on('violation:detected', (data) => {
@@ -624,8 +641,22 @@ async function startServer() {
       io.to('admin-room').emit('violation:alert', data);
     });
 
-    socket.on('heartbeat', () => {
+    socket.on('heartbeat', ({ userId }) => {
+      if (userId) proctorService.ping(String(userId));
       socket.emit('heartbeat-ack');
+    });
+
+    // Admin Controls
+    socket.on('admin:control-action', (data) => {
+      const { employeeId, action } = data;
+      const record = activeSockets.get(String(employeeId));
+      if (record) {
+        const targetSocket = io.sockets.sockets.get(record.socketId);
+        if (targetSocket) {
+          targetSocket.emit('admin-command', { action });
+          console.log(`[Server] Admin sent ${action} to employee ${employeeId}`);
+        }
+      }
     });
 
     // ✅ Fix 2 — Admin force-terminates an employee's exam
@@ -660,6 +691,7 @@ async function startServer() {
 
       // Remove from active sockets registry
       activeSockets.delete(String(employeeId));
+      proctorService.leaveExam(String(employeeId));
     });
 
     socket.on('disconnect', () => {
@@ -671,12 +703,23 @@ async function startServer() {
           break;
         }
       }
-      io.to('admin-room').emit('exam:employee-disconnected', {
-        socketId: socket.id,
-        employeeId: disconnectedEmpId
-      });
+      if (disconnectedEmpId) {
+        proctorService.leaveExam(disconnectedEmpId);
+        io.to('admin-room').emit('exam:employee-disconnected', {
+          socketId: socket.id,
+          employeeId: disconnectedEmpId
+        });
+      }
     });
   });
+
+  // Start periodic broadcast of active metrics to admin room (every 1 second)
+  setInterval(() => {
+    const metrics = proctorService.getAllActiveMetrics();
+    if (metrics.length > 0) {
+      io.to('admin-room').emit('admin:live-metrics', metrics);
+    }
+  }, 1000);
 
   // ── Debug: see exactly what's in in-memory DB right now ─────
   app.get('/api/debug-db', protect, adminOnly, async (req, res) => {

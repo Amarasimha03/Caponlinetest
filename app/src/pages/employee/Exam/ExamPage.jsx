@@ -20,6 +20,7 @@ import { enterFullscreen, exitFullscreen } from '../../../managers/FullscreenMan
 import { SetupPage } from './SetupPage';
 import { ExamLayout } from './ExamLayout';
 import { ResultModal } from './ResultModal';
+import WarningPanel from '../../../components/WarningPanel';
 
 export default function ExamPage() {
   const { assessmentId } = useParams();
@@ -233,7 +234,7 @@ export default function ExamPage() {
   });
 
   const { logViolation } = useViolations({
-    phase: submitting ? 'submitted' : phase, user, assessmentId, resultId, violations, setViolations, maxViolations, socketRef, onTerminate: terminateExam
+    phase: submitting ? 'submitted' : phase, user, assessmentId, socketRef
   });
 
   useFaceDetection({
@@ -470,6 +471,7 @@ export default function ExamPage() {
 
   return (
     <>
+      {phase === 'exam' && <WarningPanel socketRef={socketRef} onTerminate={terminateExam} />}
       <ExamLayout
         assessment={assessment}
         questionsCount={questions.length}

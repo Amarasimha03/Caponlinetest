@@ -1,65 +1,40 @@
-import { useEffect, useRef, useCallback } from 'react';
-import toast from 'react-hot-toast';
-import api from '../services/api';
+import { useEffect, useCallback } from 'react';
 
-export function useViolations({ phase, user, assessmentId, resultId, violations, setViolations, maxViolations = 3, socketRef, onTerminate }) {
-  const tabSwitchWarningsRef = useRef(0);
-
-  const logViolation = useCallback(async (type, description, customTerminationReason = null) => {
-    setViolations(prev => {
-      const newCount = prev + 1;
-      toast.error(`⚠️ Violation: ${description}`, { duration: 3000 });
-      
-      // Emit specification socket violation event
-      socketRef.current?.emit('violation', {
-        examId: assessmentId,
-        userId: user?._id,
-        type: String(type).toUpperCase() === 'TAB-SWITCH' ? 'TAB_SWITCH' : String(type).toUpperCase()
-      });
-
-      socketRef.current?.emit('violation:detected', {
-        employeeId: user?._id, employeeName: user?.fullName,
-        assessmentId, type, description,
-      });
-
-      api.post('/violations', {
-        assessmentId, resultId, type, description, severity: 'medium',
-      }).then(({ data }) => {
-        if (data.autoSubmit || newCount >= maxViolations || customTerminationReason) {
-          const reason = customTerminationReason || `Terminated - Maximum Violations Reached`;
-          toast.error(reason, { duration: 5000 });
-          onTerminate(reason);
-        }
-      }).catch(() => {});
-      
-      return newCount;
+export function useViolations({ phase, user, assessmentId, socketRef }) {
+  
+  const logViolation = useCallback((type, description) => {
+    // We do not maintain counts on frontend anymore. Emit immediately to backend.
+    socketRef.current?.emit('violation', {
+      examId: assessmentId,
+      userId: user?._id,
+      type: type,
+      description: description,
+      screenshot: null // Optionally implemented later if needed
     });
-  }, [user, assessmentId, resultId, maxViolations, socketRef, onTerminate, setViolations]);
+  }, [user, assessmentId, socketRef]);
 
   useEffect(() => {
     if (phase !== 'exam') return;
 
     const handleVisibility = () => {
       if (document.hidden) {
-        tabSwitchWarningsRef.current += 1;
-        const count = tabSwitchWarningsRef.current;
-        let msg = "";
-        if (count === 1) msg = "Tab switch detected. Do not leave the exam window.";
-        else if (count === 2) msg = "Second warning. Tab switching is not allowed.";
-        else if (count === 3) msg = "Final warning for tab switching. Exam will be cancelled.";
-        else msg = "Terminated due to Tab Switching.";
-
-        toast.error(`Warning ${count}: ${msg}`, { duration: 5000 });
-        logViolation('tab-switch', msg, count >= 4 ? "Terminated - Tab Switching" : null);
+        logViolation('TAB_SWITCH', 'Candidate switched tabs or minimized the browser.');
       }
     };
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && phase === 'exam') logViolation('fullscreen-exit', 'Exited fullscreen');
+      if (!document.fullscreenElement && phase === 'exam') {
+        logViolation('TAB_SWITCH', 'Candidate exited fullscreen mode.');
+      }
     };
 
-    const handleBlur = () => logViolation('focus-loss', 'Window lost focus');
-    const handleContextMenu = (e) => { e.preventDefault(); logViolation('right-click', 'Right-click attempted'); };
+    const handleBlur = () => logViolation('TAB_SWITCH', 'Window lost focus.');
+    
+    const handleContextMenu = (e) => { 
+      e.preventDefault(); 
+      logViolation('RIGHT_CLICK', 'Right-click attempted.'); 
+    };
+    
     const handleKeyDown = (e) => {
       if ((e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'a')) ||
         (e.key === 'F12') ||
@@ -67,11 +42,12 @@ export function useViolations({ phase, user, assessmentId, resultId, violations,
         (e.altKey && e.key === 'Tab') ||
         (e.key === 'PrintScreen')) {
         e.preventDefault();
-        logViolation('devtools', `Blocked: ${e.key}`);
+        logViolation('DEVTOOLS', `Blocked keyboard shortcut: ${e.key}`);
       }
     };
-    const handleCopy = (e) => { e.preventDefault(); logViolation('copy-paste', 'Copy attempted'); };
-    const handlePaste = (e) => { e.preventDefault(); logViolation('copy-paste', 'Paste attempted'); };
+    
+    const handleCopy = (e) => { e.preventDefault(); logViolation('COPY_PASTE', 'Copy attempted.'); };
+    const handlePaste = (e) => { e.preventDefault(); logViolation('COPY_PASTE', 'Paste attempted.'); };
 
     document.addEventListener('visibilitychange', handleVisibility);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -92,5 +68,5 @@ export function useViolations({ phase, user, assessmentId, resultId, violations,
     };
   }, [phase, logViolation]);
 
-  return { violations, setViolations, logViolation };
+  return { logViolation };
 }
