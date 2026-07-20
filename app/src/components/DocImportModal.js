@@ -30,7 +30,7 @@ const STEPS = [
   { id: 'read',      label: 'Reading Document...',    pct: 35 },
   { id: 'extract',   label: 'Extracting Questions...', pct: 58 },
   { id: 'validate',  label: 'Validating...',           pct: 78 },
-  { id: 'save',      label: 'Saving Assessment...',    pct: 92 },
+  { id: 'save',      label: 'Uploading Sequentially...', pct: 92 },
   { id: 'complete',  label: 'Completed',               pct: 100 },
 ];
 
@@ -451,21 +451,15 @@ function ImportSummary({ summary, errors }) {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{summary.fileName}</p>
       </div>
 
-      {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-        {[
-          { label: 'Document Questions', value: summary.documentQuestions, color: '#6366f1' },
-          { label: 'Imported', value: summary.imported, color: '#10b981' },
-          { label: 'Skipped', value: summary.skipped, color: '#f59e0b' },
-          { label: 'Failed', value: summary.failed, color: '#ef4444' },
-          { label: 'Duplicates', value: summary.duplicates, color: '#8b5cf6' },
-          { label: 'Processing Time', value: summary.processingTime, color: '#0ea5e9' },
-        ].map(s => (
-          <div key={s.label} style={S.statCard}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: s.color, marginBottom: 2 }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{s.label}</div>
-          </div>
-        ))}
+      {/* Stats list */}
+      <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 10, border: '1px solid var(--border-light)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+          <div><strong>Document:</strong> <span style={{ color: 'var(--text-primary)' }}>{summary.fileName}</span></div>
+          <div><strong>Questions Found:</strong> <span style={{ color: 'var(--text-primary)' }}>{summary.documentQuestions}</span></div>
+          <div><strong>Questions Uploaded:</strong> <span style={{ color: 'var(--text-primary)' }}>{summary.imported}</span></div>
+          <div><strong>Failed:</strong> <span style={{ color: summary.failed > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{summary.failed}</span></div>
+          <div><strong>Status:</strong> <span style={{ color: allGood ? 'var(--success)' : '#f59e0b', fontWeight: 600 }}>{allGood ? 'Upload Successful' : 'Upload Completed with Warnings'}</span></div>
+        </div>
       </div>
 
       {/* Error report */}
@@ -512,15 +506,31 @@ function ImportSummary({ summary, errors }) {
   );
 }
 
-function AbortPanel({ message, errors, parseErrors, onRetry, onCancel, fileName }) {
+function AbortPanel({ message, errors, parseErrors, onRetry, onCancel, fileName, abortData }) {
   const allErrors = [...(errors || []), ...(parseErrors || [])];
+  
+  // Extract custom rollback info if provided in abortData
+  const found = abortData?.summary?.found || abortData?.found || '-';
+  const failedQ = abortData?.failedQuestionNumber ? `Question ${abortData.failedQuestionNumber}` : (allErrors.length > 0 ? `Question ${allErrors[0].questionNumber || 'Unknown'}` : '-');
+  const reason = abortData?.detail || (allErrors.length > 0 ? allErrors[0].error : message);
+
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 24, padding: '20px 16px', borderRadius: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
         <ZapOff size={40} color='var(--danger)' style={{ marginBottom: 10 }} />
-        <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--danger)', marginBottom: 8 }}>Import Failed</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 480, margin: '0 auto' }}>{message}</p>
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>No data has been saved. The import was fully rolled back.</p>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+          {message || 'Import Aborted'}
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No questions were saved.</p>
+      </div>
+
+      <div style={{ background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: 10, border: '1px solid var(--border-light)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+          <div><strong>Questions Found:</strong> <span style={{ color: 'var(--text-primary)' }}>{found}</span></div>
+          <div><strong>Uploaded:</strong> <span style={{ color: 'var(--text-primary)' }}>0 (Rolled Back)</span></div>
+          <div><strong>Failed:</strong> <span style={{ color: 'var(--danger)' }}>{failedQ}</span></div>
+          <div><strong>Reason:</strong> <span style={{ color: 'var(--text-primary)' }}>{reason}</span></div>
+        </div>
       </div>
 
       {allErrors.length > 0 && (
