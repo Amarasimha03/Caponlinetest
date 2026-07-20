@@ -50,6 +50,7 @@ const stateSyncRoutes = require('./routes/stateSync');
 const liveMonitoringRoutes = require('./routes/liveMonitoringRoutes');
 const examRoutes = require('./routes/examRoutes');
 const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
+const configRoutes = require('./routes/config');
 
 const app = express();
 const compression = require('compression');
@@ -137,6 +138,15 @@ async function startServer() {
   app.use('/api/auth', authRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/assessments', assessmentRoutes);
+  
+  // Log registered assessment routes on startup for diagnostics
+  assessmentRoutes.stack.forEach(layer => {
+    if (layer.route) {
+      const methods = Object.keys(layer.route.methods).join(',').toUpperCase();
+      console.log(`✅ Mounted Route: ${methods} /api/assessments${layer.route.path}`);
+    }
+  });
+
   app.use('/api/questions', questionRoutes);
   app.use('/api/results', resultRoutes);
   app.use('/api/violations', violationRoutes);
@@ -145,6 +155,7 @@ async function startServer() {
   app.use('/api/state', stateSyncRoutes);
   app.use('/api/live-monitoring', liveMonitoringRoutes);
   app.use('/api/exam', examRoutes);
+  app.use('/api/config', configRoutes);
   // No auth middleware — called directly by Google Apps Script
   app.use('/api/sheets', sheetsWebhookRoutes);
 

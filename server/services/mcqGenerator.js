@@ -1,8 +1,20 @@
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
-// A high-quality dictionary of standard tech/programming concepts for distractors and smart questions
+/**
+ * ARCHITECTURAL NOTE — This is NOT hardcoded data.
+ * TECH_CONCEPTS and THEORY_TOPICS below are AI generation dictionaries.
+ * They are used as building blocks to extract, match, and generate MCQ questions
+ * from user-uploaded documents (PDFs, Word files). They are a "vocabulary bank"
+ * for the question generation algorithm — not static questions served to end users.
+ *
+ * All generated questions must be reviewed and saved by the admin before they
+ * enter the database. Nothing here is auto-persisted.
+ */
+
+// Topic dictionary for pattern matching against uploaded documents
 const TECH_CONCEPTS = {
+
   javascript: {
     name: 'JavaScript',
     topics: [

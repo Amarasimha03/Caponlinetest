@@ -212,7 +212,8 @@ exports.updateQuestion = async (req, res) => {
 exports.deleteQuestion = async (req, res) => {
   try {
     const qRes = await querySheets('getQuestions');
-    const question = (qRes.data || []).find(q => String(q._id) === String(req.params.id));
+    let allQuestions = qRes.data || [];
+    const question = allQuestions.find(q => String(q._id) === String(req.params.id));
     
     await querySheets('deleteEntity', { sheetName: 'questions', _id: req.params.id });
 
@@ -225,6 +226,21 @@ exports.deleteQuestion = async (req, res) => {
         try { qList = typeof assessment.questions === 'string' ? JSON.parse(assessment.questions) : (assessment.questions || []); } catch(e){}
         qList = qList.filter(id => String(id) !== String(req.params.id));
         await querySheets('updateAssessment', { _id: assId, questions: qList });
+      }
+
+      // Re-index the remaining questions for this assessment
+      const remainingQuestions = allQuestions.filter(q => 
+        (String(q.assessment) === String(assId) || String(q.assessmentId) === String(assId)) && 
+        String(q._id) !== String(req.params.id)
+      );
+      remainingQuestions.sort((a, b) => parseInt(a.questionNumber || 0) - parseInt(b.questionNumber || 0));
+      
+      for (let i = 0; i < remainingQuestions.length; i++) {
+        const q = remainingQuestions[i];
+        const newOrder = i + 1;
+        if (parseInt(q.questionNumber) !== newOrder) {
+          await querySheets('updateQuestion', { _id: q._id, questionNumber: newOrder });
+        }
       }
     }
 

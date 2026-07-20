@@ -6,7 +6,10 @@ exports.protect = async (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
-    if (!token) return res.status(401).json({ success: false, message: 'Not authorized, no token' });
+    if (!token) {
+      console.warn(`[Auth Protect] 401 - No token found in headers. Authorization header: ${req.headers.authorization}`);
+      return res.status(401).json({ success: false, message: 'Not authorized, no token' });
+    }
 
     const secret = process.env.JWT_SECRET || 'onlinetest_jwt_secret_2024_secure_key';
     const decoded = jwt.verify(token, secret);
@@ -26,16 +29,23 @@ exports.protect = async (req, res, next) => {
       };
     }
 
-    if (!employee) return res.status(401).json({ success: false, message: 'User not found' });
-    if (!employee.isActive || employee.isActive === 'false') return res.status(403).json({ success: false, message: 'Account deactivated' });
+    if (!employee) {
+      console.warn(`[Auth Protect] 401 - User not found in DB. decoded.id=${decoded.id}`);
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+    if (!employee.isActive || employee.isActive === 'false') {
+      console.warn(`[Auth Protect] 403 - Account deactivated. decoded.id=${decoded.id}`);
+      return res.status(403).json({ success: false, message: 'Account deactivated' });
+    }
 
     req.user = employee;
     next();
   } catch (err) {
-    console.error('AUTH MIDDLEWARE ERROR:', err.message);
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+      console.warn(`[Auth Protect] 401 - JWT Verification Failed: ${err.message}`);
+      return res.status(401).json({ success: false, message: `Token invalid or expired: ${err.message}` });
     }
+    console.error('AUTH MIDDLEWARE ERROR:', err.message);
     return res.status(500).json({ success: false, message: 'Server error validating user session' });
   }
 };

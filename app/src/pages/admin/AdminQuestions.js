@@ -491,32 +491,13 @@ export default function AdminQuestions() {
         <div className="page-actions" style={{ display: 'flex', gap: 10 }}>
           <button
             className="btn btn-secondary"
-            onClick={handleAutoGenerateUpload}
-            disabled={isGenerating}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            AI Generate
-          </button>
-          <button
-            className="btn btn-secondary"
             onClick={() => setShowDocImport(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))', border: '1px solid rgba(99,102,241,0.4)', color: 'var(--primary-light)', fontWeight: 600 }}
           >
             <FileUp size={16} />
             Import .docx
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setDeleteImportedMessage('');
-              setShowDeleteImportedModal(true);
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: 'var(--danger)', color: 'var(--danger)' }}
-          >
-            <Trash2 size={16} />
-            Delete Imported MCQs
-          </button>
+
           <button className="btn btn-primary" onClick={handleAddQuestion}><Plus size={18} /> Add Question</button>
         </div>
       </div>

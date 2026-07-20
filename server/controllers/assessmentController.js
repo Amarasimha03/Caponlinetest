@@ -118,14 +118,22 @@ exports.getAssessment = async (req, res) => {
   try {
     const assRes = await querySheets('getAssessments');
     const allAssessments = assRes.data || [];
-    const assessment = allAssessments.find(a => String(a._id) === String(req.params.id));
+    
+    // Compare as string, but also handle padded numbers (e.g. '04' === '4')
+    const reqId = String(req.params.id);
+    const reqIdNum = !isNaN(parseInt(reqId, 10)) ? parseInt(reqId, 10) : null;
+    
+    const assessment = allAssessments.find(a => 
+      String(a._id) === reqId || (reqIdNum !== null && parseInt(a._id, 10) === reqIdNum)
+    );
 
     if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not found' });
 
     // Fetch questions
-    const qRes = await querySheets('getQuestions', req.params.id ? { assessmentId: req.params.id } : {});
+    const searchId = assessment._id; // Use the matched assessment's true ID
+    const qRes = await querySheets('getQuestions', req.params.id ? { assessmentId: searchId } : {});
     const allQuestions = qRes.data || [];
-    let questions = allQuestions.filter(q => String(q.assessment) === String(req.params.id) || String(q.assessmentId) === String(req.params.id));
+    let questions = allQuestions.filter(q => String(q.assessment) === String(searchId) || String(q.assessmentId) === String(searchId));
 
     // Parse options correctly
     const parsedQuestions = questions.map(q => {
@@ -161,6 +169,7 @@ exports.getAssessment = async (req, res) => {
     if (req.user.role === 'employee') {
       let emQs = [...parsedQuestions];
       if (assessment.isRandomized) emQs = emQs.sort(() => Math.random() - 0.5);
+      else emQs = emQs.sort((a, b) => (parseInt(a.questionNumber) || 0) - (parseInt(b.questionNumber) || 0) || String(a._id).localeCompare(String(b._id)));
 
       const sanitized = emQs.map(q => {
         return {
@@ -173,7 +182,10 @@ exports.getAssessment = async (req, res) => {
       return res.json({ success: true, assessment });
     }
 
-    assessment.questions = parsedQuestions;
+    // Admin view: strictly preserve original document import order based on questionNumber
+    assessment.questions = parsedQuestions.sort((a, b) => 
+      (parseInt(a.questionNumber) || 0) - (parseInt(b.questionNumber) || 0) || String(a._id).localeCompare(String(b._id))
+    );
     res.json({ success: true, assessment });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -386,3 +398,69 @@ exports.submitExam = async (req, res) => {
   // Redirect to /api/submit-exam with 308 (Permanent Redirect) to preserve POST method and body
   res.redirect(308, '/api/submit-exam');
 };
+
+exports.deleteImportedQuestions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'Assessment ID is required.' });
+
+    const qRes = await querySheets('getQuestions');
+    let allQuestions = qRes.data || [];
+    
+    // Handle '04' vs '4' padding safely
+    const reqId = String(id);
+    const reqIdNum = !isNaN(parseInt(reqId, 10)) ? parseInt(reqId, 10) : null;
+    
+    // 1. Find all questions for this assessment
+    let assessmentQuestions = allQuestions.filter(q => 
+      String(q.assessment) === reqId || String(q.assessmentId) === reqId ||
+      (reqIdNum !== null && (parseInt(q.assessment, 10) === reqIdNum || parseInt(q.assessmentId, 10) === reqIdNum))
+    );
+    
+    // 2. Identify imported questions (source === 'DOCUMENT_IMPORT')
+    const importedQuestions = assessmentQuestions.filter(q => q.source === 'DOCUMENT_IMPORT');
+    
+    if (importedQuestions.length === 0) {
+      return res.status(404).json({ success: false, message: 'No imported questions found for this assessment.' });
+    }
+
+    // 3. Delete imported questions sequentially (bottom-up to avoid any potential indexing issues on Apps Script side, though deleteEntity uses _id)
+    importedQuestions.sort((a, b) => parseInt(b.questionNumber || 0) - parseInt(a.questionNumber || 0));
+    
+    let deletedCount = 0;
+    for (const q of importedQuestions) {
+      await querySheets('deleteEntity', { sheetName: 'questions', _id: q._id });
+      deletedCount++;
+    }
+
+    // 4. Re-index remaining questions
+    const remainingQuestions = assessmentQuestions.filter(q => q.source !== 'DOCUMENT_IMPORT');
+    remainingQuestions.sort((a, b) => parseInt(a.questionNumber || 0) - parseInt(b.questionNumber || 0));
+    
+    for (let i = 0; i < remainingQuestions.length; i++) {
+      const q = remainingQuestions[i];
+      const newOrder = i + 1;
+      if (parseInt(q.questionNumber) !== newOrder) {
+        await querySheets('updateQuestion', { _id: q._id, questionNumber: newOrder });
+      }
+    }
+
+    // 5. Clear Cache
+    clearCache();
+    if (global.io) global.io.emit('db:sync');
+
+    // 6. Audit Logging (Using console for standard server logging as requested)
+    console.log(`[AUDIT] Admin ${req.user._id} deleted ${deletedCount} imported questions from Assessment ${id}. IP: ${req.ip}`);
+
+    res.status(200).json({
+      success: true,
+      deletedQuestions: deletedCount,
+      message: `${deletedCount} imported questions deleted successfully.`
+    });
+
+  } catch (err) {
+    console.error('Error deleting imported questions:', err);
+    res.status(500).json({ success: false, message: 'Unable to delete imported questions. Please try again.', detail: err.message });
+  }
+};
+
