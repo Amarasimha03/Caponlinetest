@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, X, ArrowLeft, CheckCircle, Upload, Sparkles, Loader2, Save } from 'lucide-react';
+import { Plus, Trash2, X, ArrowLeft, CheckCircle, Upload, Sparkles, Loader2, Save, FileUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import CopyButton from '../../components/CopyButton';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import DocImportModal from '../../components/DocImportModal';
 import socket from '../../services/socket';
 
 const TYPES = ['mcq', 'multiple-select', 'true-false', 'coding'];
@@ -189,6 +190,12 @@ export default function AdminQuestions() {
   const [isSaving, setIsSaving] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [showDocImport, setShowDocImport] = useState(false);
+
+  const [showDeleteImportedModal, setShowDeleteImportedModal] = useState(false);
+  const [isDeletingImported, setIsDeletingImported] = useState(false);
+  const [deleteImportedMessage, setDeleteImportedMessage] = useState('');
+  const importedQuestionsCount = questions.filter(q => q.source === 'DOCUMENT_IMPORT').length;
 
   const lastLoadedIdRef = React.useRef(null);
 
@@ -211,17 +218,15 @@ export default function AdminQuestions() {
   }, [assessmentId]);
 
   useEffect(() => {
-    // Reset state only when switching to a completely different assessment
     if (lastLoadedIdRef.current !== assessmentId) {
       setQuestions([]);
       setAssessment(null);
-      setGeneratedQuestions([]); // Clear previous generated questions here too!
+      setGeneratedQuestions([]);
       setLoading(true);
       lastLoadedIdRef.current = assessmentId;
     }
     
     load();
-    // Live Socket sync hook
     socket.on('db:sync', () => {
       console.log('📡 Real-time sync signal received: updating question list');
       load();
@@ -230,8 +235,6 @@ export default function AdminQuestions() {
       socket.off('db:sync');
     };
   }, [assessmentId, load]);
-
-
 
   const handleAddQuestion = () => {
     setForm(emptyForm);
@@ -245,8 +248,8 @@ export default function AdminQuestions() {
       toast.success('Question added');
       setShowModal(false);
       setForm(emptyForm);
-      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
-      await load(); // Reload fresh data from backend
+      localStorage.removeItem('admin_assessments_list');
+      await load();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
@@ -266,12 +269,32 @@ export default function AdminQuestions() {
     try {
       await api.delete(`/questions/${targetId}`);
       toast.success('Question permanently deleted');
-      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
-      await load(); // Reload fresh data from backend
+      localStorage.removeItem('admin_assessments_list');
+      await load();
     } catch {
       toast.error('Failed to delete question');
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteImported = async () => {
+    setIsDeletingImported(true);
+    setDeleteImportedMessage('');
+    try {
+      const res = await api.delete(`/assessments/${assessmentId}/imported-questions`);
+      if (res.data.success) {
+        setDeleteImportedMessage(`✓ ${res.data.message}`);
+        setTimeout(() => {
+          setShowDeleteImportedModal(false);
+          setIsDeletingImported(false);
+          load();
+        }, 2000);
+      }
+    } catch (err) {
+      console.error(err);
+      setDeleteImportedMessage(err.response?.data?.message || 'Unable to delete imported questions. Please try again.');
+      setIsDeletingImported(false);
     }
   };
 
@@ -285,9 +308,8 @@ export default function AdminQuestions() {
     setForm({ ...form, options: opts });
   };
 
-  // Upload Document and Automatically Generate MCQs
   const handleAutoGenerateUpload = () => {
-    setGeneratedQuestions([]); // Clear any previous imports from state immediately
+    setGeneratedQuestions([]);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.docx,.txt';
@@ -305,7 +327,6 @@ export default function AdminQuestions() {
           if (isTxt) {
             fileContent = ev.target.result;
           } else {
-            // Convert to base64
             fileContent = ev.target.result.split(',')[1];
           }
 
@@ -391,7 +412,6 @@ export default function AdminQuestions() {
       return;
     }
 
-    // Validate that each question has exactly one correct answer and non-empty options
     for (let i = 0; i < generatedQuestions.length; i++) {
       const q = generatedQuestions[i];
       if (!q.title.trim()) {
@@ -420,11 +440,11 @@ export default function AdminQuestions() {
         assessmentId
       });
       toast.success('Successfully saved all questions to Google Sheets!', { id: toastId });
-      localStorage.removeItem('admin_assessments_list'); // Remove stale cache
+      localStorage.removeItem('admin_assessments_list');
       setShowAutoGenerateModal(false);
       setGeneratedQuestions([]);
       
-      setLoading(true); // Trigger skeleton state to show visual load!
+      setLoading(true);
       await load(); 
     } catch (err) {
       console.error(err);
@@ -471,7 +491,26 @@ export default function AdminQuestions() {
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
             {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            Import Document
+            AI Generate
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowDocImport(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))', border: '1px solid rgba(99,102,241,0.4)', color: 'var(--primary-light)', fontWeight: 600 }}
+          >
+            <FileUp size={16} />
+            Import .docx
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              setDeleteImportedMessage('');
+              setShowDeleteImportedModal(true);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: 'var(--danger)', color: 'var(--danger)' }}
+          >
+            <Trash2 size={16} />
+            Delete Imported MCQs
           </button>
           <button className="btn btn-primary" onClick={handleAddQuestion}><Plus size={18} /> Add Question</button>
         </div>
@@ -492,7 +531,6 @@ export default function AdminQuestions() {
         )}
       </div>
 
-      {/* Manual Add Question Modal */}
       <AnimatePresence>
         {showModal && (
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)}>
@@ -584,7 +622,6 @@ export default function AdminQuestions() {
         )}
       </AnimatePresence>
 
-      {/* Auto MCQ Review and Edit Modal */}
       <AnimatePresence>
         {showAutoGenerateModal && (
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ zIndex: 1000 }} onClick={() => setShowAutoGenerateModal(false)}>
@@ -605,7 +642,6 @@ export default function AdminQuestions() {
                   <button className="modal-close" onClick={() => setShowAutoGenerateModal(false)}><X size={20} /></button>
                 </div>
                 
-                {/* One-click bulk change all marks */}
                 {generatedQuestions.length > 0 && (
                   <div style={{ 
                     display: 'flex', 
@@ -705,6 +741,7 @@ export default function AdminQuestions() {
           </motion.div>
         )}
       </AnimatePresence>
+
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -713,6 +750,71 @@ export default function AdminQuestions() {
         message="Are you sure you want to permanently delete this MCQ? This will completely remove it from Google Sheets database."
         loading={deleteLoading}
       />
+
+      {/* Word Document Import Modal */}
+      {showDocImport && (
+        <DocImportModal
+          assessmentId={assessmentId}
+          assessmentTitle={assessment?.title}
+          onClose={() => setShowDocImport(false)}
+          onImportComplete={async (count) => {
+            toast.success(`✅ ${count} question(s) imported successfully from Word document!`);
+            localStorage.removeItem('admin_assessments_list');
+            setLoading(true);
+            await load();
+          }}
+        />
+      )}
+
+      {/* Delete Imported MCQs Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteImportedModal && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeleteImportedModal(false)}>
+            <motion.div className="modal" style={{ maxWidth: 450, padding: 24, textAlign: 'center' }} initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={e => e.stopPropagation()}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Trash2 size={28} color="var(--danger)" />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Delete Imported Questions?</h3>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                This action will permanently delete all questions imported from documents for this assessment.
+              </p>
+              
+              <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 12, marginBottom: 20, textAlign: 'left', border: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Assessment:</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{assessment?.title || '-'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Imported Questions:</span>
+                  <span style={{ fontWeight: 800, color: 'var(--danger)' }}>{importedQuestionsCount}</span>
+                </div>
+              </div>
+
+              {importedQuestionsCount === 0 && !deleteImportedMessage && (
+                <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', borderRadius: 8, fontSize: 13, marginBottom: 20 }}>
+                  No imported questions found for this assessment.
+                </div>
+              )}
+
+              {deleteImportedMessage && (
+                <div style={{ padding: '12px', background: deleteImportedMessage.includes('✓') ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: deleteImportedMessage.includes('✓') ? 'var(--success)' : 'var(--danger)', borderRadius: 8, fontSize: 13, marginBottom: 20, fontWeight: 500 }}>
+                  {deleteImportedMessage}
+                </div>
+              )}
+
+              <p style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 24 }}>This action cannot be undone.</p>
+              
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button className="btn btn-secondary" onClick={() => setShowDeleteImportedModal(false)} disabled={isDeletingImported}>Cancel</button>
+                <button className="btn btn-primary" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={handleDeleteImported} disabled={isDeletingImported || importedQuestionsCount === 0}>
+                  {isDeletingImported ? <Loader2 size={16} className="animate-spin" /> : 'Delete All'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
