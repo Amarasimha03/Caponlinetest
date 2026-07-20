@@ -9,12 +9,13 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import socket from '../../services/socket';
+import { useConfig } from '../../hooks/useConfig';
 
-const CATEGORIES = ['General', 'Technical', 'Aptitude', 'HR', 'Coding'];
+// STATUS_COLORS is a pure UI constant mapping fixed status strings to CSS class names
 const STATUS_COLORS = { draft: 'badge-muted', active: 'badge-success', scheduled: 'badge-warning', completed: 'badge-info' };
 const defaultForm = {
   _id: undefined, title: '', description: '', duration: 30, timePerQuestion: 30,
-  passingScore: 60, category: 'General', isRandomized: false, maxViolations: 3, status: 'draft',
+  passingScore: 60, category: '', isRandomized: false, maxViolations: 3, status: 'draft',
   questions: [],
 };
 
@@ -139,13 +140,22 @@ export default function AdminAssessments() {
   const navigate = useNavigate();
   const [form, setForm] = useState(defaultForm);
 
+  // Fetch dynamic config (categories come from live DB data)
+  const { config } = useConfig();
+  // Derive categories: union of config defaults + any new categories in existing assessments
+  const CATEGORIES = React.useMemo(() => {
+    const fromAssessments = assessments.map(a => (a.category || '').trim()).filter(Boolean);
+    return [...new Set([...config.categories, ...fromAssessments])].sort();
+  }, [assessments, config.categories]);
+
   const load = async (isBackground = false) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const hasCache = assessments.length > 0;
     if (!isBackground && !hasCache) setLoading(true);
     try {
-      const [aRes, eRes] = await Promise.all([api.get('/assessments'), api.get('/employees')]);
+      const config = isBackground ? { _isBackgroundRefresh: true } : {};
+      const [aRes, eRes] = await Promise.all([api.get('/assessments', config), api.get('/employees', config)]);
       const assessmentsList = aRes.data.assessments || [];
       const employeesList = eRes.data.employees || [];
       setAssessments(assessmentsList);

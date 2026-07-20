@@ -5,13 +5,14 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import socket from '../../services/socket';
+import { useConfig } from '../../hooks/useConfig';
 
-const DEPARTMENTS = ['General', 'Engineering', 'Marketing', 'HR', 'Finance', 'Operations', 'Sales', 'IT', 'Legal'];
+// ROLES is a true domain constant (only 2 possible values, fixed by auth system)
 const ROLES = ['employee', 'admin'];
-const DESIGNATIONS = ['Software Engineer', 'Senior Software Engineer', 'Digital Marketing', 'Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'QA Engineer', 'DevOps Engineer', 'Data Analyst', 'Project Manager', 'UI/UX Designer', 'Business Analyst', 'HR Executive', 'Accountant', 'Sales Executive', 'Team Lead', 'Intern'];
-const COMPANIES = ['Cabptiod Solutions', 'TCS', 'Infosys', 'Wipro', 'HCL Technologies', 'Tech Mahindra', 'Cognizant', 'Accenture'];
+// File extensions for Excel upload validation — a format constant, not data
+const EXCEL_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
 
-const defaultForm = { fullName: '', employeeId: '', email: '', phone: '', department: 'General', designation: 'Software Engineer', designationCustom: '', company: 'Cabptiod Solutions', companyCustom: '', role: 'employee', password: '', status: 'Active' };
+const defaultForm = { fullName: '', employeeId: '', email: '', phone: '', department: '', designation: '', designationCustom: '', company: '', companyCustom: '', role: 'employee', password: '', status: 'Active' };
 
 export default function AdminEmployees() {
   const [employees, setEmployees] = useState(() => {
@@ -43,6 +44,12 @@ export default function AdminEmployees() {
   // Drag & drop state
   const [dragActive, setDragActive] = useState(false);
 
+  // Fetch dynamic config (departments, designations, companies) from API
+  const { config } = useConfig();
+  const DEPARTMENTS = config.departments;
+  const DESIGNATIONS = config.designations;
+  const COMPANIES = config.companies;
+
   const downloadSampleTemplate = () => {
     const headers = 'Employee ID,Employee Name,Email,Phone Number,Department,Role,Password,Status\n';
     const sampleRows = [
@@ -61,10 +68,9 @@ export default function AdminEmployees() {
   const handleExcelUpload = async (file) => {
     if (!file) return;
 
-    // Type validation
-    const validExtensions = ['.xlsx', '.xls', '.csv'];
+    // Type validation (EXCEL_EXTENSIONS is defined at module level)
     const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!validExtensions.includes(fileExt)) {
+    if (!EXCEL_EXTENSIONS.includes(fileExt)) {
       toast.error('Invalid Excel format. Please upload .xlsx, .xls or .csv only.');
       return;
     }
@@ -146,7 +152,8 @@ export default function AdminEmployees() {
     const hasCache = employees.length > 0;
     if (!isBackground && !hasCache) setLoading(true);
     try {
-      const { data } = await api.get('/employees');
+      const config = isBackground ? { _isBackgroundRefresh: true } : {};
+      const { data } = await api.get('/employees', config);
       const employeesWithStatus = (data.employees || []).map(e => ({
         ...e,
         isActive: e.status === 'Active' || e.isActive, // derive isActive from status if needed
@@ -242,7 +249,7 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId || '',
       email: emp.email || '',
       phone: emp.phone || '',
-      department: emp.department || 'General',
+      department: emp.department || DEPARTMENTS[0] || '',
       designation: desigInList ? emp.designation : 'Other',
       designationCustom: desigInList ? '' : (emp.designation || ''),
       company: compInList ? emp.company : 'Other',
@@ -357,7 +364,8 @@ export default function AdminEmployees() {
           <Filter size={15} color="var(--text-muted)" />
           <select className="form-input form-select" value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{ marginBottom: 0, minWidth: 140 }}>
             <option value="All">All Departments</option>
-            {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+            {/* Derive filter options from actual loaded data for 100% accuracy */}
+            {[...new Set(employees.map(e => e.department).filter(Boolean))].sort().map(d => <option key={d}>{d}</option>)}
           </select>
         </div>
       </div>

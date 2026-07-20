@@ -34,7 +34,8 @@ export default function EmployeeDashboard() {
       loadAbortController.current = new AbortController();
 
       const { data } = await api.get('/assessments/my', {
-        signal: loadAbortController.current.signal
+        signal: loadAbortController.current.signal,
+        _isBackgroundRefresh: isBackground
       });
 
       const list = data.assessments || [];

@@ -41,7 +41,7 @@ const useMonitoringStore = create((set, get) => ({
     }
 
     try {
-      const res = await api.get('/live-monitoring');
+      const res = await api.get('/live-monitoring', { _isBackgroundRefresh: true });
       const fetched = res.data || [];
       consecutiveFailures = 0; // reset on success
 
