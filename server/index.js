@@ -51,6 +51,7 @@ const liveMonitoringRoutes = require('./routes/liveMonitoringRoutes');
 const examRoutes = require('./routes/examRoutes');
 const sheetsWebhookRoutes = require('./routes/sheetsWebhook');
 const configRoutes = require('./routes/config');
+const adminRoutes = require('./routes/adminRoutes');
 
 const proctorService = require('./services/proctorService');
 
@@ -158,6 +159,7 @@ async function startServer() {
   app.use('/api/live-monitoring', liveMonitoringRoutes);
   app.use('/api/exam', examRoutes);
   app.use('/api/config', configRoutes);
+  app.use('/api/admin', adminRoutes);
   // No auth middleware — called directly by Google Apps Script
   app.use('/api/sheets', sheetsWebhookRoutes);
 

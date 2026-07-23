@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, User, Camera, Maximize2, X, Activity, ShieldAlert, Monitor } from 'lucide-react';
 import useMonitoringStore from '../../store/monitoringStore';
+import AdminExamDetailsDrawer from '../../components/AdminExamDetailsDrawer';
 
 // Reliable stream attachment helper that safely handles video playback
 function attachStream(ref, stream) {
@@ -53,7 +54,7 @@ const LiveVideo = memo(({ stream, style }) => {
 });
 
 // Memoized CandidateCard to prevent re-rendering videos unnecessarily when other states change
-const CandidateCard = memo(({ candidate, onMaximize }) => {
+const CandidateCard = memo(({ candidate, onMaximize, onNameClick }) => {
   const cameraRef = useRef(null);
   const screenRef = useRef(null);
 
@@ -143,7 +144,21 @@ const CandidateCard = memo(({ candidate, onMaximize }) => {
             {candidate.employeeName?.[0]}
           </div>
           <div style={{ overflow: 'hidden', flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{candidate.employeeName}</div>
+            <div 
+              onClick={() => onNameClick && onNameClick(candidate.employeeId)}
+              style={{ 
+                fontSize: 13, 
+                fontWeight: 700, 
+                color: 'var(--primary)', 
+                whiteSpace: 'nowrap', 
+                textOverflow: 'ellipsis', 
+                overflow: 'hidden',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              {candidate.employeeName}
+            </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>ID: {candidate.employeeId?.slice(-6)}</div>
           </div>
         </div>
@@ -177,6 +192,7 @@ if (typeof document !== 'undefined' && !document.getElementById('monitoring-keyf
 export default function AdminMonitoring() {
   const { activeExams, violations, connected, fetchMonitoringData, rejoin, terminateExam, restoreStreams } = useMonitoringStore();
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [drawerUserId, setDrawerUserId] = useState(null);
 
   const selectedCameraRef = useRef(null);
   const selectedScreenRef = useRef(null);
@@ -285,6 +301,7 @@ export default function AdminMonitoring() {
                   key={candidate.employeeId || i}
                   candidate={candidate}
                   onMaximize={setSelectedCandidate}
+                  onNameClick={setDrawerUserId}
                 />
               ))}
             </div>
@@ -423,6 +440,11 @@ export default function AdminMonitoring() {
           </div>
         )}
       </AnimatePresence>
+      
+      <AdminExamDetailsDrawer 
+        userId={drawerUserId} 
+        onClose={() => setDrawerUserId(null)} 
+      />
     </div>
   );
 }
