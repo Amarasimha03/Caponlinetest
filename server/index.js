@@ -448,9 +448,13 @@ async function startServer() {
     }
   }));
 
-  // 404 Fallback for unhandled routes
+  // 404 Fallback for unhandled API routes, serve React app for others
   app.get('*', (req, res) => {
-    res.status(404).json({ success: false, message: 'API route not found' });
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({ success: false, message: 'API route not found' });
+    } else {
+      res.sendFile(path.join(clientBuildPath, 'index.html'));
+    }
   });
 
   const http = require('http');
