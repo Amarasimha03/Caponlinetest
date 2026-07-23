@@ -39,11 +39,7 @@ api.interceptors.response.use(
       let user = null;
       try { user = JSON.parse(localStorage.getItem('user')); } catch (e) { }
 
-      // Never auto-logout admin
-      if (user && user.role === 'admin') {
-        console.warn('Admin received 401, preventing auto-logout');
-        return Promise.reject(error);
-      }
+      // Allow admin auto-logout on 401 to prevent infinite error loops
 
       localStorage.removeItem("token");
       localStorage.removeItem("user");
