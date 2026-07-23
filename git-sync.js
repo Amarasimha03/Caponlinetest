@@ -66,14 +66,14 @@ function syncRepo() {
 
   console.log('📤 [GitSync] Pushing server folder to backend remote (git subtree push)...');
   // Use subtree push to push only the server directory to the backend repository
-  const pushBackendRes = runCommand('git subtree push --prefix server backend main');
+  const pushBackendRes = runCommand('git subtree push --prefix server backend master');
   if (pushBackendRes.error) {
     console.error('❌ [GitSync Error] Git subtree push to backend failed:', pushBackendRes.message);
     if (pushBackendRes.message.includes('rejected') || pushBackendRes.message.includes('fetch first')) {
       console.warn('⚠️ [GitSync Warning] Backend push rejected. Retrying with force-push...');
       const splitRes = runCommand('git subtree split --prefix server main');
       if (!splitRes.error && splitRes.trim()) {
-        runCommand(`git push backend ${splitRes.trim()}:main --force`);
+        runCommand(`git push backend ${splitRes.trim()}:master --force`);
       }
     }
   } else {
