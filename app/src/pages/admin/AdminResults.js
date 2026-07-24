@@ -531,7 +531,14 @@ export default function AdminResults() {
                             </td>
 
                             <td style={{ fontSize: 13, fontWeight: 500 }}>
-                              {ass.title || '—'}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span>{ass.title || '—'}</span>
+                                {r.attemptNumber && (
+                                  <span style={{ fontSize: 10, background: 'rgba(99,102,241,0.1)', color: 'var(--primary)', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                    Attempt {r.attemptNumber}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -539,9 +546,15 @@ export default function AdminResults() {
                             </td>
 
                             <td>
-                              <span className={`badge ${passed ? 'badge-success' : 'badge-danger'}`}>
-                                {passed ? 'PASS' : 'FAIL'}
-                              </span>
+                              {r.status === 'assigned' ? (
+                                <span className="badge" style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary)' }}>ASSIGNED</span>
+                              ) : r.status === 'in-progress' ? (
+                                <span className="badge" style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>IN PROGRESS</span>
+                              ) : (
+                                <span className={`badge ${passed ? 'badge-success' : 'badge-danger'}`}>
+                                  {passed ? 'PASS' : 'FAIL'}
+                                </span>
+                              )}
                             </td>
 
                             <td>

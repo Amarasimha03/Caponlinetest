@@ -341,7 +341,7 @@ export default function AdminAssessments() {
         assessmentId: showSendModal._id,
       });
 
-      toast.success(`✅ Exam sent to ${targetEmployeeIds.length} employee(s) & synced to Google Sheets!`);
+      toast.success(`✅ Exam sent to ${targetEmployeeIds.length} employee(s). New exam attempts assigned successfully and previous attempts preserved!`);
       setShowSendModal(null);
       load();
     } catch (err) {
