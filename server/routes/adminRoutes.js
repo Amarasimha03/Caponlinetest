@@ -416,7 +416,7 @@ router.get('/reports', protect, adminOnly, async (req, res) => {
     const todayCompleted = filteredForSummary.length;
     
     // Count unique candidates who took the exam in the selected date range
-    const uniqueCandidates = new Set(filteredForSummary.map(r => String(r.employeeMongoId))).size;
+    const uniqueCandidates = new Set(filteredForSummary.map(r => r.employeeMongoId || r.employee || r.employeeId).filter(Boolean).map(id => String(id))).size;
 
     // Pagination — applied on status-filtered table data
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
