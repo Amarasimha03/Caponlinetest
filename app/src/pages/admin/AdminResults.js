@@ -240,7 +240,7 @@ export default function AdminResults() {
 
   // ─── Cards definition ─────────────────────────────────────────────────────
   const cards = [
-    { key: 'publishedExams', iconName: 'BookOpen',      label: 'Exams Published', value: summary.publishedExams ?? 0,           color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
+    { key: 'allRecords',     iconName: 'Database',       label: 'All Records',     value: summary.completed ?? 0,                color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
     { key: 'todayCompleted', iconName: 'CalendarCheck', label: periodLabel,        value: summary.todayCompleted ?? 0,           color: '#06b6d4', glow: '#06b6d430', clickable: true  },
     { key: 'passed',         iconName: 'Trophy',         label: 'Passed',          value: summary.passed         ?? 0,           color: '#10b981', glow: '#10b98130', clickable: true  },
     { key: 'failed',         iconName: 'XCircle',        label: 'Failed',          value: summary.failed         ?? 0,           color: '#ef4444', glow: '#ef444430', clickable: true  },
@@ -250,7 +250,7 @@ export default function AdminResults() {
   let activeLabel = activeCard === 'todayCompleted' ? periodLabel
     : activeCard === 'passed' ? 'Passed only'
     : activeCard === 'failed' ? 'Failed only'
-    : activeCard === 'publishedExams' ? 'All Records'
+    : activeCard === 'allRecords' ? 'All Records'
     : null;
 
   if (filterParams.sortPct) {
