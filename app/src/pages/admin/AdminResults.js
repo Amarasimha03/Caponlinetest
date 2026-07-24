@@ -241,7 +241,8 @@ export default function AdminResults() {
   // ─── Cards definition ─────────────────────────────────────────────────────
   const cards = [
     { key: 'allRecords',     iconName: 'Database',       label: 'All Records',     value: summary.completed ?? 0,                color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
-    { key: 'todayCompleted', iconName: 'CalendarCheck', label: periodLabel,        value: summary.todayCompleted ?? 0,           color: '#06b6d4', glow: '#06b6d430', clickable: true  },
+    { key: 'publishedExams', iconName: 'BookOpen',       label: 'Total Exams',     value: summary.publishedExams ?? 0,           color: '#f59e0b', glow: '#f59e0b30', clickable: true  },
+    { key: 'todayCompleted', iconName: 'CalendarCheck',  label: periodLabel,        value: summary.todayCompleted ?? 0,           color: '#06b6d4', glow: '#06b6d430', clickable: true  },
     { key: 'passed',         iconName: 'Trophy',         label: 'Passed',          value: summary.passed         ?? 0,           color: '#10b981', glow: '#10b98130', clickable: true  },
     { key: 'failed',         iconName: 'XCircle',        label: 'Failed',          value: summary.failed         ?? 0,           color: '#ef4444', glow: '#ef444430', clickable: true  },
     { key: 'avgscore',       iconName: 'TrendingUp',     label: 'Avg Score',       value: `${summary.averageScore ?? 0}%`,       color: '#6366f1', glow: '#6366f130', clickable: true  },
@@ -323,7 +324,7 @@ export default function AdminResults() {
       {/* ── Dashboard Cards ────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginTop: 20 }}
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginTop: 20 }}
       >
         {cards.map(({ key, iconName, label, value, color, glow, clickable }) => {
           const isActive = activeCard === key;
