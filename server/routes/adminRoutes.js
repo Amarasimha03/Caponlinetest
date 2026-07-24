@@ -451,7 +451,7 @@ router.get('/reports', protect, adminOnly, async (req, res) => {
     });
 
     res.json({
-      summary: { publishedExams, todayCompleted, completed, passed: passedCount, failed: failedCount, averageScore },
+      summary: { publishedExams, todayCompleted, completed, passed: passedCount, failed: failedCount, averageScore, totalOverallRecords: allResults.length },
       records,
       totalRecords,
       page,
