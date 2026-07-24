@@ -414,6 +414,9 @@ router.get('/reports', protect, adminOnly, async (req, res) => {
     // Period Completed — candidates who completed exams published in the SELECTED date range
     // (not hardcoded to today — reflects whatever from/to the admin has selected)
     const todayCompleted = filteredForSummary.length;
+    
+    // Count unique candidates who took the exam in the selected date range
+    const uniqueCandidates = new Set(filteredForSummary.map(r => String(r.employeeMongoId))).size;
 
     // Pagination — applied on status-filtered table data
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
@@ -451,7 +454,7 @@ router.get('/reports', protect, adminOnly, async (req, res) => {
     });
 
     res.json({
-      summary: { publishedExams, todayCompleted, completed, passed: passedCount, failed: failedCount, averageScore, totalOverallRecords: allResults.length },
+      summary: { publishedExams, todayCompleted, uniqueCandidates, completed, passed: passedCount, failed: failedCount, averageScore, totalOverallRecords: allResults.length },
       records,
       totalRecords,
       page,
