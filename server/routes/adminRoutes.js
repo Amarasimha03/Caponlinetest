@@ -428,8 +428,18 @@ router.get('/reports', protect, adminOnly, async (req, res) => {
     const records = paginated.map(r => {
       const emp = employees.find(e => String(e._id) === String(r.employeeMongoId));
       const ass = assessments.find(a => String(a._id) === String(r.assessmentId));
+
+      const userAssResults = allResults.filter(x => 
+        String(x.employeeMongoId || x.employee || x.employeeId) === String(r.employeeMongoId || r.employee || r.employeeId) && 
+        String(x.assessmentId || x.assessment) === String(r.assessmentId || r.assessment)
+      ).sort((a,b) => String(a._id).localeCompare(String(b._id)));
+      
+      const attemptIndex = userAssResults.findIndex(x => String(x._id) === String(r._id));
+      const attemptNumber = attemptIndex >= 0 ? attemptIndex + 1 : 1;
+
       return {
         _id:          r._id,
+        attemptNumber,
         employee: {
           fullName:   emp?.fullName   || '',
           email:      emp?.email      || '',

@@ -46,10 +46,6 @@ exports.getMyAssessments = async (req, res) => {
     const allResults = resultRes.data || [];
     const myResults = allResults.filter(r => String(r.employeeMongoId || r.employee) === String(req.user._id));
 
-    const completedIds = myResults
-      .filter(r => r.status !== 'in-progress')
-      .map(r => String(r.assessmentId || r.assessment || ''));
-
     // Employee's assigned assessments are stored as an array of IDs in 'assignedAssessments'
     let assignedIds = [];
     try {
@@ -84,25 +80,30 @@ exports.getMyAssessments = async (req, res) => {
       const assessmentResults = myResults.filter(r => String(r.assessmentId || r.assessment) === aId);
       assessmentResults.sort((x, y) => String(y._id).localeCompare(String(x._id)));
 
-      // Prefer completed/submitted result over in-progress
-      const latestCompleted = assessmentResults.find(r => r.status !== 'in-progress');
-      const chosenResult = latestCompleted || assessmentResults[0] || null;
+      const latestResult = assessmentResults[0] || null;
+
+      let aStatus = 'pending';
+      if (latestResult) {
+        if (latestResult.status === 'in-progress') aStatus = 'in-progress';
+        else if (latestResult.status === 'assigned') aStatus = 'pending';
+        else aStatus = 'completed';
+      }
 
       let parsedResult = null;
-      if (chosenResult) {
+      if (latestResult && latestResult.status !== 'assigned') {
         parsedResult = {
-          ...chosenResult,
-          totalScore: parseInt(chosenResult.totalScore, 10) || 0,
-          totalMarks: parseInt(chosenResult.totalMarks, 10) || 0,
-          percentage: parseInt(chosenResult.percentage, 10) || 0,
-          passed: String(chosenResult.passed).toLowerCase() === 'true'
+          ...latestResult,
+          totalScore: parseInt(latestResult.totalScore, 10) || 0,
+          totalMarks: parseInt(latestResult.totalMarks, 10) || 0,
+          percentage: parseInt(latestResult.percentage, 10) || 0,
+          passed: String(latestResult.passed).toLowerCase() === 'true'
         };
       }
 
       return {
         ...a,
         questions: matchedQuestions,
-        status: completedIds.includes(aId) ? 'completed' : 'pending',
+        status: aStatus,
         result: parsedResult,
       };
     });
@@ -265,22 +266,51 @@ exports.bulkAssignExam = async (req, res) => {
 
     const empRes = await querySheets('getEmployees');
     const employees = empRes.data || [];
-
     const targetEmployees = employees.filter(e => employeeIds.includes(String(e._id)));
+
+    const assRes = await querySheets('getAssessments');
+    const assessments = assRes.data || [];
+    const assessment = assessments.find(a => String(a._id) === String(assessmentId));
+
+    const resRes = await querySheets('getResults');
+    const allResults = resRes.data || [];
 
     for (const emp of targetEmployees) {
       let assigned = [];
       try { assigned = typeof emp.assignedAssessments === 'string' ? JSON.parse(emp.assignedAssessments) : (emp.assignedAssessments || []); } catch (e) { }
 
+      const empResults = allResults.filter(r => 
+        String(r.employeeMongoId || r.employee || r.employeeId) === String(emp._id) &&
+        String(r.assessmentId || r.assessment) === String(assessmentId)
+      );
+
+      const hasCompleted = empResults.some(r => r.status !== 'in-progress' && r.status !== 'assigned');
+      const hasPendingPlaceholder = empResults.some(r => r.status === 'assigned');
+      const hasInProgress = empResults.some(r => r.status === 'in-progress');
+
       if (!assigned.includes(assessmentId)) {
         assigned.push(assessmentId);
         await querySheets('updateEmployee', { _id: emp._id, assignedAssessments: assigned });
+      } else if (hasCompleted && !hasPendingPlaceholder && !hasInProgress) {
+        // Reassignment: create a new attempt placeholder
+        const attemptPlaceholder = {
+          _id: Date.now().toString() + Math.floor(Math.random() * 1000),
+          employee: emp._id.toString(),
+          assessment: assessmentId,
+          employeeId: emp.employeeId || emp._id.toString(),
+          employeeMongoId: emp._id.toString(),
+          employeeName: emp.fullName || '',
+          employeeEmail: emp.email || '',
+          assessmentId: assessmentId,
+          assessmentTitle: assessment ? assessment.title : 'Exam',
+          status: 'assigned',
+          startedAt: new Date().toISOString(),
+          examStarted: false,
+          examCompleted: false,
+        };
+        await querySheets('submitResult', attemptPlaceholder);
       }
     }
-
-    const assRes = await querySheets('getAssessments');
-    const assessments = assRes.data || [];
-    const assessment = assessments.find(a => String(a._id) === String(assessmentId));
 
     if (assessment) {
       let assTo = [];
@@ -343,20 +373,26 @@ exports.startExam = async (req, res) => {
       });
     }
 
+    const pendingAssignedAttempt = allResults.find(r =>
+      String(r.employee || r.employeeMongoId) === String(req.user._id) &&
+      String(r.assessmentId || r.assessment) === String(assessmentId) &&
+      r.status === 'assigned'
+    );
+
     const completedAttempt = allResults.find(r =>
       String(r.employee || r.employeeMongoId) === String(req.user._id) &&
       String(r.assessmentId || r.assessment) === String(assessmentId) &&
-      r.status !== 'in-progress'
+      r.status !== 'in-progress' && r.status !== 'assigned'
     );
 
-    if (completedAttempt) {
+    if (completedAttempt && !pendingAssignedAttempt) {
       return res.status(400).json({
         success: false,
         message: "Exam already attempted. Retakes are not allowed."
       });
     }
 
-    const resultId = Date.now().toString();
+    const resultId = pendingAssignedAttempt ? pendingAssignedAttempt._id : Date.now().toString();
     const assRes = await querySheets('getAssessments');
     const assessment = (assRes.data || []).find(a => String(a._id) === String(assessmentId));
 
