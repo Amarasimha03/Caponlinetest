@@ -75,7 +75,7 @@ export default function AdminResults() {
   const [quickFilter, setQuickFilter] = useState('today');
 
   // ─── Response state ─────────────────────────────────────────────────────
-  const [summary, setSummary] = useState({ publishedExams: 0, todayCompleted: 0, completed: 0, passed: 0, failed: 0, averageScore: 0, totalOverallRecords: 0 });
+  const [summary, setSummary] = useState({ publishedExams: 0, todayCompleted: 0, completed: 0, passed: 0, failed: 0, averageScore: 0, uniqueCandidates: 0 });
   const [records, setRecords] = useState([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -240,7 +240,7 @@ export default function AdminResults() {
 
   // ─── Cards definition ─────────────────────────────────────────────────────
   const cards = [
-    { key: 'allRecords',     iconName: 'Database',       label: 'All Records',     value: summary.totalOverallRecords ?? 0,                color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
+    { key: 'uniqueCandidates', iconName: 'Users',          label: 'Total Exam Candidates', subtitle: 'Candidates who took the exam this month', value: summary.uniqueCandidates ?? 0, color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
     { key: 'publishedExams', iconName: 'BookOpen',       label: 'Total Exams',     value: summary.publishedExams ?? 0,           color: '#f59e0b', glow: '#f59e0b30', clickable: true  },
     { key: 'todayCompleted', iconName: 'CalendarCheck',  label: periodLabel,        value: summary.todayCompleted ?? 0,           color: '#06b6d4', glow: '#06b6d430', clickable: true  },
     { key: 'passed',         iconName: 'Trophy',         label: 'Passed',          value: summary.passed         ?? 0,           color: '#10b981', glow: '#10b98130', clickable: true  },
@@ -251,7 +251,7 @@ export default function AdminResults() {
   let activeLabel = activeCard === 'todayCompleted' ? periodLabel
     : activeCard === 'passed' ? 'Passed only'
     : activeCard === 'failed' ? 'Failed only'
-    : activeCard === 'allRecords' ? 'All Records'
+    : activeCard === 'uniqueCandidates' ? 'Total Exam Candidates'
     : null;
 
   if (filterParams.sortPct) {
@@ -326,7 +326,7 @@ export default function AdminResults() {
         initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginTop: 20 }}
       >
-        {cards.map(({ key, iconName, label, value, color, glow, clickable }) => {
+        {cards.map(({ key, iconName, label, subtitle, value, color, glow, clickable }) => {
           const isActive = activeCard === key;
           return (
             <motion.div
@@ -334,7 +334,7 @@ export default function AdminResults() {
               whileHover={{ scale: clickable ? 1.02 : 1, y: clickable ? -2 : 0 }}
               whileTap={{ scale: clickable ? 0.98 : 1 }}
               onClick={() => clickable && handleCardClick(key)}
-              title={clickable ? (isActive ? `Clear "${label}" filter` : `Filter by: ${label}`) : label}
+              title={clickable ? (isActive ? `Clear "${label}" filter` : `Filter by: ${label}${subtitle ? ' - ' + subtitle : ''}`) : (subtitle || label)}
               style={{
                 padding: '16px 18px',
                 display: 'flex', alignItems: 'center', gap: 12,
