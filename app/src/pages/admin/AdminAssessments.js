@@ -275,7 +275,7 @@ export default function AdminAssessments() {
     setDeleteTarget(null); // Hide modal instantly
     
     try {
-      await api.delete(`/assessments/${targetId}`);
+      await api.delete(`/admin/assessments/${targetId}`);
       toast.success('Assessment and all related records permanently deleted');
       // No load() called to prevent UI flicker
     } catch (err) {

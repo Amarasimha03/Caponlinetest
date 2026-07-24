@@ -267,7 +267,7 @@ export default function AdminQuestions() {
     setDeleteTarget(null);
 
     try {
-      await api.delete(`/questions/${targetId}`);
+      await api.delete(`/admin/questions/${targetId}`);
       toast.success('Question permanently deleted');
       // Update state immediately without refresh
       setQuestions(prev => prev.filter(q => q._id !== targetId));

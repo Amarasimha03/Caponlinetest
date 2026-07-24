@@ -229,7 +229,7 @@ export default function AdminEmployees() {
     // Optimistic UI update
     setEmployees(employees.filter(e => e._id !== deleteTarget));
     try {
-      await api.delete(`/employees/${deleteTarget}`);
+      await api.delete(`/admin/employees/${deleteTarget}`);
       toast.success('Employee permanently deleted');
       setDeleteTarget(null);
       // load(); // No need to load immediately as optimistic update covers it

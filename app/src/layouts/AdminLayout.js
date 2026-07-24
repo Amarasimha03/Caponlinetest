@@ -23,8 +23,20 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore();
   const { init, fetchMonitoringData, destroy } = useMonitoringStore();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(window.innerWidth <= 1440);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1440 && !collapsed) {
+        setCollapsed(true);
+      } else if (window.innerWidth > 1440 && collapsed) {
+        setCollapsed(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [collapsed]);
 
   // Stable ref so the interval callback never captures a stale/recreated function
   const fetchRef = useRef(fetchMonitoringData);
@@ -137,7 +149,7 @@ export default function AdminLayout() {
     <div className="layout">
       {/* Desktop Sidebar */}
       <motion.aside
-        animate={{ width: collapsed ? 72 : 260 }}
+        animate={{ width: collapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)' }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         style={{
           position: 'fixed', left: 0, top: 0, bottom: 0,
@@ -162,7 +174,7 @@ export default function AdminLayout() {
               initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25 }}
               style={{
-                position: 'fixed', left: 0, top: 0, bottom: 0, width: 260,
+                position: 'fixed', left: 0, top: 0, bottom: 0, width: 'var(--sidebar-width)',
                 background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-light)',
                 display: 'flex', flexDirection: 'column', zIndex: 999, overflow: 'hidden',
               }}
@@ -175,9 +187,9 @@ export default function AdminLayout() {
 
       {/* Main */}
       <main style={{
-        marginLeft: collapsed ? 72 : 260,
+        marginLeft: collapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
         flex: 1, transition: 'margin-left 0.3s ease',
-        minHeight: '100vh',
+        minHeight: '100vh', minWidth: 0,
       }}>
         {/* Top bar */}
         <header style={{
