@@ -435,26 +435,14 @@ async function startServer() {
 
 
 
-  // Serve Static Assets with aggressive browser caching in production
-  app.use(express.static(clientBuildPath, {
-    maxAge: '1y',
-    etag: true,
-    setHeaders: (res, filepath) => {
-      if (path.basename(filepath) === 'index.html') {
-        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      } else {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    }
-  }));
+  // Basic health check endpoint
+  app.get('/', (req, res) => {
+    res.json({ success: true, message: 'CapOnline Backend API is running smoothly 🚀' });
+  });
 
-  // 404 Fallback for unhandled API routes, serve React app for others
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/')) {
-      res.status(404).json({ success: false, message: 'API route not found' });
-    } else {
-      res.sendFile(path.join(clientBuildPath, 'index.html'));
-    }
+  // 404 Fallback for unhandled routes
+  app.use('*', (req, res) => {
+    res.status(404).json({ success: false, message: 'API route not found' });
   });
 
   const http = require('http');
