@@ -75,7 +75,7 @@ export default function AdminResults() {
   const [quickFilter, setQuickFilter] = useState('today');
 
   // ─── Response state ─────────────────────────────────────────────────────
-  const [summary, setSummary] = useState({ publishedExams: 0, todayCompleted: 0, completed: 0, passed: 0, failed: 0, averageScore: 0 });
+  const [summary, setSummary] = useState({ publishedExams: 0, todayCompleted: 0, completed: 0, passed: 0, failed: 0, averageScore: 0, totalOverallRecords: 0 });
   const [records, setRecords] = useState([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -240,7 +240,7 @@ export default function AdminResults() {
 
   // ─── Cards definition ─────────────────────────────────────────────────────
   const cards = [
-    { key: 'allRecords',     iconName: 'Database',       label: 'All Records',     value: summary.completed ?? 0,                color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
+    { key: 'allRecords',     iconName: 'Database',       label: 'All Records',     value: summary.totalOverallRecords ?? 0,                color: '#8b5cf6', glow: '#8b5cf630', clickable: true  },
     { key: 'publishedExams', iconName: 'BookOpen',       label: 'Total Exams',     value: summary.publishedExams ?? 0,           color: '#f59e0b', glow: '#f59e0b30', clickable: true  },
     { key: 'todayCompleted', iconName: 'CalendarCheck',  label: periodLabel,        value: summary.todayCompleted ?? 0,           color: '#06b6d4', glow: '#06b6d430', clickable: true  },
     { key: 'passed',         iconName: 'Trophy',         label: 'Passed',          value: summary.passed         ?? 0,           color: '#10b981', glow: '#10b98130', clickable: true  },
